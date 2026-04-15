@@ -74,7 +74,7 @@ function HabitForm({ onSubmit, onCancel }: HabitFormProps) {
 }
 
 export function HabitTracker() {
-  const { state, addHabit, deleteHabit, toggleHabitEntry } = usePlanner();
+  const { state, addHabit, deleteHabit, toggleHabitEntry, isReadOnly } = usePlanner();
   const [showForm, setShowForm] = useState(false);
   const weekDays = getWeekDays(state.selectedDate);
 
@@ -82,10 +82,12 @@ export function HabitTracker() {
     <div>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Hábitos</span>
-        <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}>
-          <Plus size={14} />
-          Agregar
-        </Button>
+        {!isReadOnly && (
+          <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}>
+            <Plus size={14} />
+            Agregar
+          </Button>
+        )}
       </div>
 
       {state.habits.filter(h => !h.archivedAt).length === 0 ? (

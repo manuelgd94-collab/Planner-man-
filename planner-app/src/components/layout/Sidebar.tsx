@@ -1,4 +1,4 @@
-import { Calendar, CalendarDays, LayoutDashboard, ChevronLeft, ChevronRight, CalendarCheck } from 'lucide-react';
+import { Calendar, CalendarDays, LayoutDashboard, ChevronLeft, ChevronRight, CalendarCheck, History } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ViewType } from '../../types';
 import { usePlanner } from '../../store/PlannerContext';
@@ -9,6 +9,7 @@ const NAV_ITEMS: { view: ViewType; label: string; icon: React.ElementType }[] = 
   { view: 'diario', label: 'Diario', icon: Calendar },
   { view: 'mensual', label: 'Mensual', icon: CalendarDays },
   { view: 'anual', label: 'Anual', icon: LayoutDashboard },
+  { view: 'historial', label: 'Historial', icon: History },
 ];
 
 interface SidebarProps {

@@ -9,7 +9,7 @@ import { usePlanner } from '../../store/PlannerContext';
 import { toISODate } from '../../utils/dateUtils';
 
 export function TaskList() {
-  const { state, addTask, updateTask, deleteTask, toggleTask } = usePlanner();
+  const { state, addTask, updateTask, deleteTask, toggleTask, isReadOnly } = usePlanner();
   const [showForm, setShowForm] = useState(false);
   const dateKey = toISODate(state.selectedDate);
   const tasks = state.dailyPlan?.tasks ?? [];
@@ -26,10 +26,12 @@ export function TaskList() {
             {pending.length} pendientes
           </span>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}>
-          <Plus size={14} />
-          Agregar
-        </Button>
+        {!isReadOnly && (
+          <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}>
+            <Plus size={14} />
+            Agregar
+          </Button>
+        )}
       </div>
 
       {tasks.length === 0 ? (

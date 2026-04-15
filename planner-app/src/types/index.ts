@@ -90,8 +90,10 @@ export interface AnnualPlan {
   goals: Goal[];
 }
 
-export type ViewType = 'diario' | 'mensual' | 'anual';
+export type ViewType = 'diario' | 'mensual' | 'anual' | 'historial';
 
 export interface AppSettings {
   sidebarCollapsed: boolean;
 }
+
+export type { HistoryEntry } from './history';

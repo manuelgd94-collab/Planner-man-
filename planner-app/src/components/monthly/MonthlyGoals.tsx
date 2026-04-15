@@ -9,7 +9,7 @@ import { EmptyState } from '../ui/EmptyState';
 import { toYearMonth } from '../../utils/dateUtils';
 
 export function MonthlyGoals() {
-  const { state, addGoal } = usePlanner();
+  const { state, addGoal, isReadOnly } = usePlanner();
   const [showForm, setShowForm] = useState(false);
   const goals = state.monthlyPlan?.goals ?? [];
   const yearMonth = toYearMonth(state.selectedDate);
@@ -19,18 +19,20 @@ export function MonthlyGoals() {
     <div>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Objetivos del mes</span>
-        <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}>
-          <Plus size={14} />
-          Agregar
-        </Button>
+        {!isReadOnly && (
+          <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}>
+            <Plus size={14} />
+            Agregar
+          </Button>
+        )}
       </div>
 
       {goals.length === 0 ? (
         <EmptyState
           icon={<Target size={28} strokeWidth={1} />}
           title="Sin objetivos este mes"
-          description="Define qué quieres lograr este mes"
-          action={<Button variant="primary" size="sm" onClick={() => setShowForm(true)}>Crear objetivo</Button>}
+          description={isReadOnly ? 'No hay objetivos registrados' : 'Define qué quieres lograr este mes'}
+          action={!isReadOnly ? <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>Crear objetivo</Button> : undefined}
         />
       ) : (
         <div className="space-y-2">

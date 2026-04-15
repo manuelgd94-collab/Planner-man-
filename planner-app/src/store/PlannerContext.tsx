@@ -5,6 +5,8 @@ import type {
 } from '../types';
 import { getItem, setItem, KEYS } from './localStorage';
 import { toISODate, toYearMonth } from '../utils/dateUtils';
+import { addHistoryEntry } from './historyLog';
+import { isLocked, hasPin } from './auth';
 
 interface AppState {
   view: ViewType;
@@ -15,6 +17,7 @@ interface AppState {
   monthlyPlan: MonthlyPlan | null;
   annualPlan: AnnualPlan | null;
   settings: AppSettings;
+  locked: boolean;
 }
 
 type Action =
@@ -38,7 +41,8 @@ type Action =
   | { type: 'UPDATE_DAILY_NOTE'; note: Note }
   | { type: 'UPDATE_MONTHLY_NOTE'; note: Note }
   | { type: 'SET_MOOD'; mood: 1 | 2 | 3 | 4 | 5 }
-  | { type: 'TOGGLE_SIDEBAR' };
+  | { type: 'TOGGLE_SIDEBAR' }
+  | { type: 'SET_LOCKED'; locked: boolean };
 
 function initialDailyPlan(date: string): DailyPlan {
   return { date, tasks: [], habitEntries: [] };
@@ -212,6 +216,9 @@ function reducer(state: AppState, action: Action): AppState {
         settings: { ...state.settings, sidebarCollapsed: !state.settings.sidebarCollapsed },
       };
 
+    case 'SET_LOCKED':
+      return { ...state, locked: action.locked };
+
     default:
       return state;
   }
@@ -220,7 +227,7 @@ function reducer(state: AppState, action: Action): AppState {
 interface PlannerContextValue {
   state: AppState;
   dispatch: React.Dispatch<Action>;
-  // Convenience helpers
+  isReadOnly: boolean;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateTask: (task: Task) => void;
   deleteTask: (id: string) => void;
@@ -242,6 +249,8 @@ const defaultSettings: AppSettings = { sidebarCollapsed: false };
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
   const today = new Date();
+  // Locked if a PIN exists and session hasn't been unlocked
+  const initialLocked = hasPin() ? isLocked() : false;
 
   const [state, dispatch] = useReducer(reducer, {
     view: 'diario',
@@ -252,7 +261,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     monthlyPlan: null,
     annualPlan: null,
     settings: getItem<AppSettings>(KEYS.settings) ?? defaultSettings,
+    locked: initialLocked,
   });
+
+  const isReadOnly = state.locked;
 
   // Load habits on mount
   useEffect(() => {
@@ -317,22 +329,24 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   }, [state.settings]);
 
   const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    dispatch({
-      type: 'ADD_TASK',
-      task: { ...task, id: crypto.randomUUID(), createdAt: now(), updatedAt: now() },
-    });
+    const newTask = { ...task, id: crypto.randomUUID(), createdAt: now(), updatedAt: now() };
+    dispatch({ type: 'ADD_TASK', task: newTask });
+    addHistoryEntry({ action: 'Tarea creada', detail: task.title, category: 'tarea' });
   }, []);
 
   const updateTask = useCallback((task: Task) => {
     dispatch({ type: 'UPDATE_TASK', task: { ...task, updatedAt: now() } });
+    addHistoryEntry({ action: 'Tarea actualizada', detail: task.title, category: 'tarea' });
   }, []);
 
   const deleteTask = useCallback((id: string) => {
     dispatch({ type: 'DELETE_TASK', taskId: id });
+    addHistoryEntry({ action: 'Tarea eliminada', detail: id, category: 'tarea' });
   }, []);
 
   const toggleTask = useCallback((id: string) => {
     dispatch({ type: 'TOGGLE_TASK', taskId: id });
+    addHistoryEntry({ action: 'Tarea marcada', detail: id, category: 'tarea' });
   }, []);
 
   const addHabit = useCallback((habit: Omit<Habit, 'id' | 'createdAt'>) => {
@@ -340,14 +354,17 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       type: 'ADD_HABIT',
       habit: { ...habit, id: crypto.randomUUID(), createdAt: now() },
     });
+    addHistoryEntry({ action: 'Hábito creado', detail: habit.name, category: 'habito' });
   }, []);
 
   const deleteHabit = useCallback((id: string) => {
     dispatch({ type: 'DELETE_HABIT', habitId: id });
+    addHistoryEntry({ action: 'Hábito eliminado', detail: id, category: 'habito' });
   }, []);
 
   const toggleHabitEntry = useCallback((habitId: string, date: string) => {
     dispatch({ type: 'TOGGLE_HABIT_ENTRY', habitId, date });
+    addHistoryEntry({ action: 'Hábito registrado', detail: `${habitId} — ${date}`, category: 'habito' });
   }, []);
 
   const addGoal = useCallback((goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -355,49 +372,45 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       type: 'ADD_GOAL',
       goal: { ...goal, id: crypto.randomUUID(), createdAt: now(), updatedAt: now() },
     });
+    addHistoryEntry({ action: 'Objetivo creado', detail: goal.title, category: 'objetivo' });
   }, []);
 
   const updateGoal = useCallback((goal: Goal) => {
     dispatch({ type: 'UPDATE_GOAL', goal: { ...goal, updatedAt: now() } });
+    addHistoryEntry({ action: 'Objetivo actualizado', detail: goal.title, category: 'objetivo' });
   }, []);
 
   const deleteGoal = useCallback((goalId: string, scope: 'monthly' | 'annual') => {
     dispatch({ type: 'DELETE_GOAL', goalId, scope });
+    addHistoryEntry({ action: 'Objetivo eliminado', detail: goalId, category: 'objetivo' });
   }, []);
 
   const updateDailyNote = useCallback((blocks: NoteBlock[], scopeKey: string) => {
     dispatch({
       type: 'UPDATE_DAILY_NOTE',
-      note: {
-        id: crypto.randomUUID(),
-        scopeType: 'daily',
-        scopeKey,
-        blocks,
-        updatedAt: now(),
-      },
+      note: { id: crypto.randomUUID(), scopeType: 'daily', scopeKey, blocks, updatedAt: now() },
     });
+    addHistoryEntry({ action: 'Nota diaria actualizada', detail: scopeKey, category: 'nota' });
   }, []);
 
   const updateMonthlyNote = useCallback((blocks: NoteBlock[], scopeKey: string) => {
     dispatch({
       type: 'UPDATE_MONTHLY_NOTE',
-      note: {
-        id: crypto.randomUUID(),
-        scopeType: 'monthly',
-        scopeKey,
-        blocks,
-        updatedAt: now(),
-      },
+      note: { id: crypto.randomUUID(), scopeType: 'monthly', scopeKey, blocks, updatedAt: now() },
     });
+    addHistoryEntry({ action: 'Nota mensual actualizada', detail: scopeKey, category: 'nota' });
   }, []);
 
   const setMood = useCallback((mood: 1 | 2 | 3 | 4 | 5) => {
+    const labels = ['', 'Mal', 'Regular', 'Normal', 'Bien', 'Excelente'];
     dispatch({ type: 'SET_MOOD', mood });
+    addHistoryEntry({ action: `Estado de ánimo: ${labels[mood]}`, detail: '', category: 'estado' });
   }, []);
 
   return (
     <PlannerContext.Provider value={{
       state, dispatch,
+      isReadOnly,
       addTask, updateTask, deleteTask, toggleTask,
       addHabit, deleteHabit, toggleHabitEntry,
       addGoal, updateGoal, deleteGoal,

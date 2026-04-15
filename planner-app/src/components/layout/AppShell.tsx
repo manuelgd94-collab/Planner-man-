@@ -4,6 +4,7 @@ import { Header } from './Header';
 import { DailyPage } from '../../pages/DailyPage';
 import { MonthlyPage } from '../../pages/MonthlyPage';
 import { AnnualPage } from '../../pages/AnnualPage';
+import { HistoryPage } from '../../pages/HistoryPage';
 
 export function AppShell() {
   const { state } = usePlanner();
@@ -18,6 +19,7 @@ export function AppShell() {
           {state.view === 'diario' && <DailyPage />}
           {state.view === 'mensual' && <MonthlyPage />}
           {state.view === 'anual' && <AnnualPage />}
+          {state.view === 'historial' && <HistoryPage />}
         </main>
       </div>
     </div>

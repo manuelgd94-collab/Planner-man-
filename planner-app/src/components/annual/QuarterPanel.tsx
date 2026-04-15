@@ -14,7 +14,7 @@ interface QuarterPanelProps {
 }
 
 export function QuarterPanel({ quarter, year }: QuarterPanelProps) {
-  const { state, addGoal } = usePlanner();
+  const { state, addGoal, isReadOnly } = usePlanner();
   const [showForm, setShowForm] = useState(false);
   const trimestre = TRIMESTRES[quarter];
 
@@ -30,20 +30,21 @@ export function QuarterPanel({ quarter, year }: QuarterPanelProps) {
             <p className="text-xs text-text-muted">{completed}/{goals.length} completados</p>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}>
-          <Plus size={14} />
-        </Button>
+        {!isReadOnly && (
+          <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}>
+            <Plus size={14} />
+          </Button>
+        )}
       </div>
 
       {goals.length === 0 ? (
         <div className="text-center py-6 border-2 border-dashed border-border rounded-lg">
           <p className="text-xs text-text-muted">Sin objetivos</p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="text-xs text-text-secondary hover:text-text-primary mt-1 underline"
-          >
-            Agregar objetivo
-          </button>
+          {!isReadOnly && (
+            <button onClick={() => setShowForm(true)} className="text-xs text-text-secondary hover:text-text-primary mt-1 underline">
+              Agregar objetivo
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
