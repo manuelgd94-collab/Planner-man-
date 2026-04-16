@@ -1,12 +1,14 @@
-import { Calendar, CalendarDays, LayoutDashboard, ChevronLeft, ChevronRight, CalendarCheck, History } from 'lucide-react';
+import { Calendar, CalendarDays, LayoutDashboard, ChevronLeft, ChevronRight, CalendarCheck, History, CalendarRange } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ViewType } from '../../types';
 import { usePlanner } from '../../store/PlannerContext';
 import { getDaysInMonthGrid, isSameDayUtil, isTodayUtil, addMonthsUtil, subMonthsUtil } from '../../utils/dateUtils';
 import { DIAS_SEMANA, MESES } from '../../utils/constants';
+import { ExportImport } from '../settings/ExportImport';
 
 const NAV_ITEMS: { view: ViewType; label: string; icon: React.ElementType }[] = [
   { view: 'diario', label: 'Diario', icon: Calendar },
+  { view: 'semanal', label: 'Semanal', icon: CalendarRange },
   { view: 'mensual', label: 'Mensual', icon: CalendarDays },
   { view: 'anual', label: 'Anual', icon: LayoutDashboard },
   { view: 'historial', label: 'Historial', icon: History },
@@ -69,6 +71,14 @@ export function Sidebar({ collapsed }: SidebarProps) {
           >
             Hoy
           </button>
+        </div>
+      )}
+
+      {/* Export / Import */}
+      {!collapsed && (
+        <div className="px-3 pb-2 border-t border-border pt-2 flex-shrink-0">
+          <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-2">Datos</p>
+          <ExportImport />
         </div>
       )}
 

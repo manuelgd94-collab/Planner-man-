@@ -2,6 +2,7 @@ import { TaskList } from '../components/daily/TaskList';
 import { HabitTracker } from '../components/daily/HabitTracker';
 import { DailyNotes } from '../components/daily/DailyNotes';
 import { MoodTracker } from '../components/daily/MoodTracker';
+import { TimeBlocks } from '../components/daily/TimeBlocks';
 
 export function DailyPage() {
   return (
@@ -28,6 +29,11 @@ export function DailyPage() {
           <div className="lg:col-span-1 bg-white border border-border rounded-xl p-4">
             <DailyNotes />
           </div>
+        </div>
+
+        {/* Time blocks */}
+        <div className="bg-white border border-border rounded-xl p-4 relative">
+          <TimeBlocks />
         </div>
       </div>
     </div>

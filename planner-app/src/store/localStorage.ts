@@ -4,6 +4,7 @@ const PREFIX = `planner:v${SCHEMA_VERSION}`;
 export const KEYS = {
   habits: `${PREFIX}:habits`,
   settings: `${PREFIX}:settings`,
+  recurringTemplates: `${PREFIX}:recurring-templates`,
   daily: (date: string) => `${PREFIX}:daily:${date}`,
   monthly: (yearMonth: string) => `${PREFIX}:monthly:${yearMonth}`,
   annual: (year: number) => `${PREFIX}:annual:${year}`,

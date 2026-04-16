@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, PanelLeft, Lock, Unlock, Eye } from 'lucide-react';
 import { clsx } from 'clsx';
 import { usePlanner } from '../../store/PlannerContext';
-import { formatDate, capitalizeFirst, addDaysUtil, subDaysUtil, addMonthsUtil, subMonthsUtil } from '../../utils/dateUtils';
+import { formatDate, capitalizeFirst, addDaysUtil, subDaysUtil, addMonthsUtil, subMonthsUtil, getWeekDays } from '../../utils/dateUtils';
 import { PinModal } from '../auth/PinModal';
 import { setLocked } from '../../store/auth';
 
@@ -11,12 +11,24 @@ export function Header() {
   const { view, selectedDate } = state;
   const [showPin, setShowPin] = useState(false);
 
+  const weekDays = useMemo(() => view === 'semanal' ? getWeekDays(selectedDate) : null, [view, selectedDate]);
+
   let title = '';
   let subtitle = '';
 
   if (view === 'diario') {
     title = capitalizeFirst(formatDate(selectedDate, "EEEE d 'de' MMMM"));
     subtitle = String(selectedDate.getFullYear());
+  } else if (view === 'semanal') {
+    if (weekDays) {
+      const first = weekDays[0];
+      const last = weekDays[6];
+      const sameMonth = first.getMonth() === last.getMonth();
+      title = sameMonth
+        ? `${first.getDate()} – ${last.getDate()} de ${capitalizeFirst(formatDate(first, 'MMMM'))}`
+        : `${first.getDate()} ${capitalizeFirst(formatDate(first, 'MMM'))} – ${last.getDate()} ${capitalizeFirst(formatDate(last, 'MMM'))}`;
+    }
+    subtitle = `Semana · ${selectedDate.getFullYear()}`;
   } else if (view === 'mensual') {
     title = capitalizeFirst(formatDate(selectedDate, 'MMMM yyyy'));
     subtitle = 'Vista mensual';
@@ -30,6 +42,7 @@ export function Header() {
 
   function goBack() {
     if (view === 'diario') dispatch({ type: 'SET_DATE', date: subDaysUtil(selectedDate, 1) });
+    else if (view === 'semanal') dispatch({ type: 'SET_DATE', date: subDaysUtil(selectedDate, 7) });
     else if (view === 'mensual') dispatch({ type: 'SET_DATE', date: subMonthsUtil(selectedDate, 1) });
     else if (view === 'anual') {
       const d = new Date(selectedDate); d.setFullYear(d.getFullYear() - 1);
@@ -39,6 +52,7 @@ export function Header() {
 
   function goForward() {
     if (view === 'diario') dispatch({ type: 'SET_DATE', date: addDaysUtil(selectedDate, 1) });
+    else if (view === 'semanal') dispatch({ type: 'SET_DATE', date: addDaysUtil(selectedDate, 7) });
     else if (view === 'mensual') dispatch({ type: 'SET_DATE', date: addMonthsUtil(selectedDate, 1) });
     else if (view === 'anual') {
       const d = new Date(selectedDate); d.setFullYear(d.getFullYear() + 1);

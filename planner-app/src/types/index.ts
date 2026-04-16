@@ -1,5 +1,6 @@
 export type Priority = 'alta' | 'media' | 'baja';
 export type TaskStatus = 'pendiente' | 'en_progreso' | 'completada' | 'cancelada';
+export type RecurrenceRule = 'diaria' | 'semanal' | 'mensual';
 
 export interface Task {
   id: string;
@@ -10,8 +11,25 @@ export interface Task {
   dueDate: string;
   completedAt?: string;
   tags: string[];
+  startTime?: string; // "HH:MM" e.g. "09:00"
+  recurrenceRule?: RecurrenceRule;
+  templateId?: string; // links to RecurringTemplate
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RecurringTemplate {
+  id: string;
+  title: string;
+  description?: string;
+  priority: Priority;
+  tags: string[];
+  startTime?: string;
+  recurrenceRule: RecurrenceRule;
+  dayOfWeek?: number; // 0=Mon..6=Sun, for 'semanal'
+  dayOfMonth?: number; // 1-31, for 'mensual'
+  createdAt: string;
+  archivedAt?: string;
 }
 
 export type HabitFrequency = 'diaria' | 'semanal';
@@ -90,7 +108,7 @@ export interface AnnualPlan {
   goals: Goal[];
 }
 
-export type ViewType = 'diario' | 'mensual' | 'anual' | 'historial';
+export type ViewType = 'diario' | 'semanal' | 'mensual' | 'anual' | 'historial';
 
 export interface AppSettings {
   sidebarCollapsed: boolean;

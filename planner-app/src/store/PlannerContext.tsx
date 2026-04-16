@@ -1,18 +1,20 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import type {
   Task, Habit, HabitEntry, Goal, DailyPlan, MonthlyPlan, AnnualPlan,
-  Note, NoteBlock, ViewType, AppSettings,
+  Note, NoteBlock, ViewType, AppSettings, RecurringTemplate,
 } from '../types';
 import { getItem, setItem, KEYS } from './localStorage';
 import { toISODate, toYearMonth } from '../utils/dateUtils';
 import { addHistoryEntry } from './historyLog';
 import { isLocked, hasPin } from './auth';
+import { getTemplates, saveTemplates, templateAppliesTo, taskFromTemplate } from './recurringTasks';
 
 interface AppState {
   view: ViewType;
   selectedDate: Date;
   habits: Habit[];
   habitEntries: HabitEntry[];
+  recurringTemplates: RecurringTemplate[];
   dailyPlan: DailyPlan | null;
   monthlyPlan: MonthlyPlan | null;
   annualPlan: AnnualPlan | null;
@@ -42,7 +44,10 @@ type Action =
   | { type: 'UPDATE_MONTHLY_NOTE'; note: Note }
   | { type: 'SET_MOOD'; mood: 1 | 2 | 3 | 4 | 5 }
   | { type: 'TOGGLE_SIDEBAR' }
-  | { type: 'SET_LOCKED'; locked: boolean };
+  | { type: 'SET_LOCKED'; locked: boolean }
+  | { type: 'ADD_RECURRING'; template: RecurringTemplate }
+  | { type: 'DELETE_RECURRING'; templateId: string }
+  | { type: 'SET_RECURRING'; templates: RecurringTemplate[] };
 
 function initialDailyPlan(date: string): DailyPlan {
   return { date, tasks: [], habitEntries: [] };
@@ -219,6 +224,15 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SET_LOCKED':
       return { ...state, locked: action.locked };
 
+    case 'SET_RECURRING':
+      return { ...state, recurringTemplates: action.templates };
+
+    case 'ADD_RECURRING':
+      return { ...state, recurringTemplates: [...state.recurringTemplates, action.template] };
+
+    case 'DELETE_RECURRING':
+      return { ...state, recurringTemplates: state.recurringTemplates.filter(t => t.id !== action.templateId) };
+
     default:
       return state;
   }
@@ -228,6 +242,8 @@ interface PlannerContextValue {
   state: AppState;
   dispatch: React.Dispatch<Action>;
   isReadOnly: boolean;
+  addRecurringTemplate: (t: Omit<RecurringTemplate, 'id' | 'createdAt'>) => void;
+  deleteRecurringTemplate: (id: string) => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateTask: (task: Task) => void;
   deleteTask: (id: string) => void;
@@ -256,6 +272,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     selectedDate: today,
     habits: [],
     habitEntries: [],
+    recurringTemplates: [],
     dailyPlan: null,
     monthlyPlan: null,
     annualPlan: null,
@@ -269,7 +286,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; });
 
-  // Load habits on mount
+  // Load habits and recurring templates on mount
   useEffect(() => {
     const habits = getItem<Habit[]>(KEYS.habits) ?? [];
     const allEntryKeys = Object.keys(localStorage).filter(k => k.startsWith(`planner:v1:daily:`));
@@ -279,12 +296,23 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       if (plan?.habitEntries) allEntries.push(...plan.habitEntries);
     });
     dispatch({ type: 'SET_HABITS', habits, entries: allEntries });
+    dispatch({ type: 'SET_RECURRING', templates: getTemplates() });
   }, []);
 
-  // Load daily plan when date changes
+  // Load daily plan when date changes, inject recurring tasks
   useEffect(() => {
-    const key = KEYS.daily(toISODate(state.selectedDate));
-    const plan = getItem<DailyPlan>(key) ?? initialDailyPlan(toISODate(state.selectedDate));
+    const dateStr = toISODate(state.selectedDate);
+    const key = KEYS.daily(dateStr);
+    const plan = getItem<DailyPlan>(key) ?? initialDailyPlan(dateStr);
+    // Inject recurring tasks that aren't already in the plan
+    const templates = getTemplates();
+    const toInject = templates.filter(t =>
+      templateAppliesTo(t, state.selectedDate) &&
+      !plan.tasks.some(task => task.templateId === t.id)
+    );
+    if (toInject.length > 0) {
+      plan.tasks = [...plan.tasks, ...toInject.map(t => taskFromTemplate(t, dateStr))];
+    }
     dispatch({ type: 'LOAD_DAILY', plan });
   }, [state.selectedDate]);
 
@@ -332,6 +360,26 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   }, [state.settings]);
 
   const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    // If recurring, also create a template
+    if (task.recurrenceRule && !task.templateId) {
+      const date = new Date(task.dueDate + 'T00:00:00');
+      const dow = date.getDay() === 0 ? 6 : date.getDay() - 1;
+      const template: RecurringTemplate = {
+        id: crypto.randomUUID(),
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        tags: task.tags,
+        startTime: task.startTime,
+        recurrenceRule: task.recurrenceRule,
+        dayOfWeek: dow,
+        dayOfMonth: date.getDate(),
+        createdAt: now(),
+      };
+      dispatch({ type: 'ADD_RECURRING', template });
+      saveTemplates([...getTemplates(), template]);
+      task = { ...task, templateId: template.id };
+    }
     const newTask = { ...task, id: crypto.randomUUID(), createdAt: now(), updatedAt: now() };
     dispatch({ type: 'ADD_TASK', task: newTask });
     addHistoryEntry({ action: 'Tarea creada', detail: task.title, category: 'tarea' });
@@ -417,6 +465,20 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     addHistoryEntry({ action: 'Nota mensual actualizada', detail: scopeKey, category: 'nota' });
   }, []);
 
+  const addRecurringTemplate = useCallback((t: Omit<RecurringTemplate, 'id' | 'createdAt'>) => {
+    const template: RecurringTemplate = { ...t, id: crypto.randomUUID(), createdAt: now() };
+    dispatch({ type: 'ADD_RECURRING', template });
+    saveTemplates([...getTemplates(), template]);
+    addHistoryEntry({ action: 'Tarea recurrente creada', detail: t.title, category: 'tarea' });
+  }, []);
+
+  const deleteRecurringTemplate = useCallback((id: string) => {
+    const template = stateRef.current.recurringTemplates.find(t => t.id === id);
+    dispatch({ type: 'DELETE_RECURRING', templateId: id });
+    saveTemplates(getTemplates().filter(t => t.id !== id));
+    addHistoryEntry({ action: 'Tarea recurrente eliminada', detail: template?.title ?? id, category: 'tarea' });
+  }, []);
+
   const setMood = useCallback((mood: 1 | 2 | 3 | 4 | 5) => {
     const labels = ['', 'Mal', 'Regular', 'Normal', 'Bien', 'Excelente'];
     dispatch({ type: 'SET_MOOD', mood });
@@ -432,6 +494,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       addGoal, updateGoal, deleteGoal,
       updateDailyNote, updateMonthlyNote,
       setMood,
+      addRecurringTemplate, deleteRecurringTemplate,
     }}>
       {children}
     </PlannerContext.Provider>
