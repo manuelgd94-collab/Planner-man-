@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import type {
   Task, Habit, HabitEntry, Goal, DailyPlan, MonthlyPlan, AnnualPlan,
   Note, NoteBlock, ViewType, AppSettings,
@@ -249,7 +249,6 @@ const defaultSettings: AppSettings = { sidebarCollapsed: false };
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
   const today = new Date();
-  // Locked if a PIN exists and session hasn't been unlocked
   const initialLocked = hasPin() ? isLocked() : false;
 
   const [state, dispatch] = useReducer(reducer, {
@@ -265,6 +264,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   });
 
   const isReadOnly = state.locked;
+
+  // Always-current state ref for callbacks
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; });
 
   // Load habits on mount
   useEffect(() => {
@@ -340,13 +343,20 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteTask = useCallback((id: string) => {
+    const task = stateRef.current.dailyPlan?.tasks.find(t => t.id === id);
     dispatch({ type: 'DELETE_TASK', taskId: id });
-    addHistoryEntry({ action: 'Tarea eliminada', detail: id, category: 'tarea' });
+    addHistoryEntry({ action: 'Tarea eliminada', detail: task?.title ?? id, category: 'tarea' });
   }, []);
 
   const toggleTask = useCallback((id: string) => {
+    const task = stateRef.current.dailyPlan?.tasks.find(t => t.id === id);
+    const wasCompleted = task?.status === 'completada';
     dispatch({ type: 'TOGGLE_TASK', taskId: id });
-    addHistoryEntry({ action: 'Tarea marcada', detail: id, category: 'tarea' });
+    addHistoryEntry({
+      action: wasCompleted ? 'Tarea reabierta' : 'Tarea completada',
+      detail: task?.title ?? id,
+      category: 'tarea',
+    });
   }, []);
 
   const addHabit = useCallback((habit: Omit<Habit, 'id' | 'createdAt'>) => {
@@ -358,13 +368,15 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteHabit = useCallback((id: string) => {
+    const habit = stateRef.current.habits.find(h => h.id === id);
     dispatch({ type: 'DELETE_HABIT', habitId: id });
-    addHistoryEntry({ action: 'Hábito eliminado', detail: id, category: 'habito' });
+    addHistoryEntry({ action: 'Hábito eliminado', detail: habit?.name ?? id, category: 'habito' });
   }, []);
 
   const toggleHabitEntry = useCallback((habitId: string, date: string) => {
+    const habit = stateRef.current.habits.find(h => h.id === habitId);
     dispatch({ type: 'TOGGLE_HABIT_ENTRY', habitId, date });
-    addHistoryEntry({ action: 'Hábito registrado', detail: `${habitId} — ${date}`, category: 'habito' });
+    addHistoryEntry({ action: 'Hábito registrado', detail: `${habit?.name ?? habitId} — ${date}`, category: 'habito' });
   }, []);
 
   const addGoal = useCallback((goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -381,8 +393,12 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteGoal = useCallback((goalId: string, scope: 'monthly' | 'annual') => {
+    const goals = scope === 'monthly'
+      ? stateRef.current.monthlyPlan?.goals
+      : stateRef.current.annualPlan?.goals;
+    const goal = goals?.find(g => g.id === goalId);
     dispatch({ type: 'DELETE_GOAL', goalId, scope });
-    addHistoryEntry({ action: 'Objetivo eliminado', detail: goalId, category: 'objetivo' });
+    addHistoryEntry({ action: 'Objetivo eliminado', detail: goal?.title ?? goalId, category: 'objetivo' });
   }, []);
 
   const updateDailyNote = useCallback((blocks: NoteBlock[], scopeKey: string) => {
