@@ -265,7 +265,11 @@ const defaultSettings: AppSettings = { sidebarCollapsed: false };
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
   const today = new Date();
-  const initialLocked = hasPin() ? isLocked() : false;
+  // Always start locked unless this browser has explicitly unlocked before.
+  // isLocked() returns true by default (when key is absent), so:
+  //   - Owner's browser (unlocked recently): false → editable immediately
+  //   - Any other browser (no key): true → read-only until PIN is entered or "view only" chosen
+  const initialLocked = isLocked();
 
   const [state, dispatch] = useReducer(reducer, {
     view: 'diario',
@@ -280,7 +284,9 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     locked: initialLocked,
   });
 
-  const isReadOnly = state.locked;
+  // isReadOnly if explicitly locked OR if this browser has no PIN configured
+  // (viewer browsers never have a PIN, so they stay read-only even after dismissing the lock screen)
+  const isReadOnly = state.locked || !hasPin();
 
   // Always-current state ref for callbacks
   const stateRef = useRef(state);
