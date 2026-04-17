@@ -1,67 +1,63 @@
 #!/usr/bin/env python3
 """
-Importa datos desde data/planificador_semanal.xlsx al formato JSON
-del Planificador web, listo para usar con el botón "Importar" de la app.
+Importa hojas "Planificador horario semana N" desde un Excel al formato JSON
+del Planificador web (compatible con el botón Importar de la app).
 
 USO
 ───
   python scripts/import_planificador.py
-  python scripts/import_planificador.py --semana 2026-04-14     # lunes de la semana deseada
-  python scripts/import_planificador.py --salida mi_backup.json
-  python scripts/import_planificador.py --crear-plantilla       # genera Excel de ejemplo
+  python scripts/import_planificador.py --entrada mi_archivo.xlsx
+  python scripts/import_planificador.py --salida backup.json
+  python scripts/import_planificador.py --debug        # muestra JSON intermedio
+  python scripts/import_planificador.py --semana 16    # solo esa semana
 
-FORMATO DEL EXCEL
-─────────────────
-El archivo puede tener una o ambas hojas:
+ESTRUCTURA ESPERADA DEL EXCEL (por hoja)
+─────────────────────────────────────────
+  Fila 1   : "Planificador horario semana 16 - Nombre"
+  Fila ~2  : "Semana de: 16-04-2026"  ← fecha inicio de la semana
+  Filas 4-7: Encabezados de secciones: "Objetivos semanales" | "Elementos pendientes" | "Emergencias"
+  Filas 8-13: Contenido de esas tres secciones (una ítem por celda)
+  Fila ~20 : Números de día (16, 17, 18 …) — el script los detecta dinámicamente
+  Fila ~21 : Nombre del mes bajo cada día
+  Filas 22-41: Tareas. Cada día ocupa 2 col: [estado ✓/✗/vacío, descripción]
+  Filas 51-59: Notas de la semana (col de "Objetivos semanales")
 
-  Hoja "Tareas"  (obligatoria para importar tareas)
-  ┌────────────┬───────┬──────────────────┬─────────────┬───────────┬────────────┐
-  │ Fecha      │ Hora  │ Titulo           │ Descripcion │ Prioridad │ Estado     │
-  ├────────────┼───────┼──────────────────┼─────────────┼───────────┼────────────┤
-  │ 2026-04-14 │ 09:00 │ Reunión de equipo│ Revisar Q2  │ alta      │ pendiente  │
-  │ Lunes      │ 11:00 │ Informe mensual  │             │ media     │ pendiente  │
-  │ 2026-04-15 │       │ Llamar al cliente│             │ baja      │ completada │
-  └────────────┴───────┴──────────────────┴─────────────┴───────────┴────────────┘
-
-  • Fecha: YYYY-MM-DD, DD/MM/YYYY, o nombre del día (Lunes … Domingo).
-    Si usás nombre de día, el script calcula la fecha según --semana.
-  • Hora:  HH:MM  (opcional)
-  • Prioridad: alta / media / baja           (default: media)
-  • Estado:    pendiente / en_progreso / completada / cancelada  (default: pendiente)
-
-  Hoja "Habitos"  (opcional)
-  ┌──────────────┬───────────┬────────┐
-  │ Nombre       │ Frecuencia│ Color  │
-  ├──────────────┼───────────┼────────┤
-  │ Ejercicio    │ diaria    │ green  │
-  │ Lectura      │ diaria    │ blue   │
-  │ Revisión sem.│ semanal   │ purple │
-  └──────────────┴───────────┴────────┘
-
-  • Frecuencia: diaria / semanal  (default: diaria)
-  • Color: blue / green / purple / pink / orange / red / yellow / indigo  (default: blue)
+MAPEO AL MODELO DE LA APP
+──────────────────────────
+  Objetivos semanales  →  Goal (scope='mensual', category='Trabajo')
+  Elementos pendientes →  Task (priority='media') en el primer día de la semana
+  Emergencias          →  Task (priority='alta')  en el primer día de la semana
+  Tareas por día       →  Task dentro de DailyPlan del día correspondiente
+    ✓ verde            →  status='completada'
+    ✗ rojo             →  status='cancelada'
+    vacío              →  status='pendiente'
+  Notas                →  NoteBlock[] en DailyPlan.note del primer día
 """
 
 import argparse
 import json
+import re
 import sys
 import uuid
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-# ── constants ────────────────────────────────────────────────────────────────
-
-DIAS_ES = {
-    "lunes": 0, "martes": 1, "miercoles": 2, "miércoles": 2,
-    "jueves": 3, "viernes": 4, "sabado": 5, "sábado": 5, "domingo": 6,
+# ── month name → number ───────────────────────────────────────────────────────
+MESES = {
+    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
+    "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
+    "septiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12,
 }
 
-VALID_PRIORITIES = {"alta", "media", "baja"}
-VALID_STATUSES   = {"pendiente", "en_progreso", "completada", "cancelada"}
-VALID_FREQ       = {"diaria", "semanal"}
-VALID_COLORS     = {"blue", "green", "purple", "pink", "orange", "red", "yellow", "indigo"}
+DIAS_NOMBRE = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+
+# Characters / strings that mean "done" ✓
+DONE_CHARS = {"✓", "✔", "v", "si", "sí", "1", "ok", "x̌"}
+# Characters / strings that mean "cancelled" ✗
+CANCEL_CHARS = {"✗", "✘", "×", "x", "no", "0", "n"}
 
 SCHEMA_PREFIX = "planner:v1"
+GOAL_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"]
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -74,393 +70,510 @@ def now_iso() -> str:
     return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 
-def week_monday(reference: date) -> date:
-    """Returns the Monday of the week containing *reference*."""
-    return reference - timedelta(days=reference.weekday())
+def cell_text(cell) -> str:
+    """Return stripped string value of a cell, or ''."""
+    if cell is None or cell.value is None:
+        return ""
+    return str(cell.value).strip()
 
 
-def parse_date_cell(value, week_start: date) -> date | None:
+def parse_status(raw: str) -> str:
+    """Map a status cell value to 'completada' | 'cancelada' | 'pendiente'."""
+    s = raw.strip().lower()
+    if s in DONE_CHARS:
+        return "completada"
+    if s in CANCEL_CHARS:
+        return "cancelada"
+    return "pendiente"
+
+
+def parse_semana_date(text: str) -> date | None:
     """
-    Accepts:
-      • datetime / date objects (from openpyxl)
-      • strings: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY
-      • day names in Spanish: Lunes … Domingo
-    Returns a date or None if unparseable.
+    Extract a date from strings like:
+      "Semana de: 16-04-2026"
+      "16/04/2026"
+      "16-04-2026"
+    Returns a date object or None.
     """
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, date):
-        return value
-
-    s = str(value).strip().lower()
-    if s in DIAS_ES:
-        return week_start + timedelta(days=DIAS_ES[s])
-
-    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+    # Try to find DD-MM-YYYY or DD/MM/YYYY anywhere in the string
+    m = re.search(r"(\d{1,2})[-/](\d{1,2})[-/](\d{4})", text)
+    if m:
         try:
-            return datetime.strptime(s, fmt).date()
+            return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
         except ValueError:
             pass
     return None
 
 
-def parse_time_cell(value) -> str | None:
-    """Returns 'HH:MM' or None."""
-    if value is None:
-        return None
-    if isinstance(value, (datetime,)):
-        return value.strftime("%H:%M")
-    if isinstance(value, timedelta):
-        total = int(value.total_seconds())
-        h, m = divmod(total // 60, 60)
-        return f"{h:02d}:{m:02d}"
-    s = str(value).strip()
-    # HH:MM or HH:MM:SS
-    parts = s.split(":")
-    if len(parts) >= 2:
-        try:
-            h, m = int(parts[0]), int(parts[1])
-            return f"{h:02d}:{m:02d}"
-        except ValueError:
-            pass
-    return None
+def week_number_from_title(title: str) -> int | None:
+    m = re.search(r"semana\s+(\d+)", title, re.IGNORECASE)
+    return int(m.group(1)) if m else None
 
 
-def normalise(value, allowed: set, default: str) -> str:
-    if value is None:
-        return default
-    s = str(value).strip().lower()
-    return s if s in allowed else default
+# ── sheet parser ──────────────────────────────────────────────────────────────
 
-
-def col_map(header_row) -> dict[str, int]:
-    """Maps lowercased column name → 0-based index."""
-    mapping = {}
-    for i, cell in enumerate(header_row):
-        if cell.value is not None:
-            mapping[str(cell.value).strip().lower()] = i
-    return mapping
-
-
-# ── Excel reader ──────────────────────────────────────────────────────────────
-
-def read_tasks(ws, week_start: date) -> dict[str, list]:
+def find_row_with_date(ws, max_row: int = 10) -> tuple[date | None, int]:
     """
-    Returns {date_str: [task_dict, …]} from the 'Tareas' sheet.
-    First row is the header.
+    Scan the first *max_row* rows looking for a cell containing a date string
+    like "Semana de: 16-04-2026".
+    Returns (date, row_index_1based) or (None, -1).
     """
-    rows = list(ws.iter_rows(values_only=False))
-    if not rows:
-        return {}
+    for r in range(1, max_row + 1):
+        for cell in ws[r]:
+            txt = cell_text(cell)
+            if txt:
+                d = parse_semana_date(txt)
+                if d:
+                    return d, r
+    return None, -1
 
-    cols = col_map(rows[0])
 
-    required = {"titulo"}
-    missing = required - cols.keys()
-    if missing:
-        print(f"  ⚠  Hoja 'Tareas': faltan columnas: {', '.join(missing)}")
-        return {}
+def find_section_headers(ws, keyword_map: dict, search_rows: range) -> dict[str, int]:
+    """
+    Given a dict of {label: keyword}, scan *search_rows* for cells whose text
+    contains each keyword. Returns {label: col_index_1based}.
+    """
+    found = {}
+    for r in search_rows:
+        for cell in ws[r]:
+            txt = cell_text(cell).lower()
+            for label, kw in keyword_map.items():
+                if label not in found and kw in txt:
+                    found[label] = cell.column
+        if len(found) == len(keyword_map):
+            break
+    return found
 
-    tasks_by_date: dict[str, list] = {}
-    skipped = 0
 
-    for row in rows[1:]:
-        vals = [c.value for c in row]
-        if not any(vals):
-            continue  # blank row
+def find_day_header_row(ws, search_rows: range) -> int:
+    """
+    Find the row that contains the most integer day-numbers (1-31).
+    Returns 1-based row index or -1.
+    """
+    best_row, best_count = -1, 0
+    for r in search_rows:
+        count = 0
+        for cell in ws[r]:
+            v = cell.value
+            if isinstance(v, (int, float)) and 1 <= int(v) <= 31:
+                count += 1
+        if count > best_count:
+            best_count, best_row = count, r
+    return best_row if best_count >= 2 else -1
 
-        title = str(vals[cols["titulo"]]).strip() if "titulo" in cols and vals[cols["titulo"]] else ""
-        if not title:
-            skipped += 1
+
+def extract_day_columns(ws, day_row: int, start_date: date) -> list[dict]:
+    """
+    From the day-header row, build a list of:
+      { "col": int, "fecha": date, "nombre": str }
+    sorted by column.
+
+    Strategy:
+      1. Collect all columns in day_row that have an integer 1-31.
+      2. For each, look in the next 1-3 rows for a month name to confirm the date.
+      3. If no month found, infer date from start_date + offset.
+    """
+    days = []
+    for cell in ws[day_row]:
+        v = cell.value
+        if not (isinstance(v, (int, float)) and 1 <= int(v) <= 31):
             continue
+        day_num = int(v)
+        col = cell.column
 
-        raw_date = vals[cols["fecha"]] if "fecha" in cols else None
-        d = parse_date_cell(raw_date, week_start)
-        if d is None:
-            d = week_start  # fallback: Monday
+        # Search adjacent rows for month name
+        month_num = None
+        day_name = ""
+        for delta in range(1, 4):
+            r2 = day_row + delta
+            if r2 > ws.max_row:
+                break
+            nearby = cell_text(ws.cell(row=r2, column=col)).lower()
+            if not month_num and nearby in MESES:
+                month_num = MESES[nearby]
+            if not day_name and nearby in {
+                "lunes","martes","miércoles","miercoles",
+                "jueves","viernes","sábado","sabado","domingo"
+            }:
+                day_name = nearby
 
-        date_str = d.strftime("%Y-%m-%d")
+        # Also check same row ±1 col for day name (sometimes it's inline)
+        if not day_name:
+            for dc in (-1, 1):
+                c2 = col + dc
+                if c2 < 1:
+                    continue
+                nearby = cell_text(ws.cell(row=day_row, column=c2)).lower()
+                if nearby in {
+                    "lunes","martes","miércoles","miercoles",
+                    "jueves","viernes","sábado","sabado","domingo"
+                }:
+                    day_name = nearby
+                    break
 
-        task = {
-            "id":          new_id(),
-            "title":       title,
-            "description": str(vals[cols["descripcion"]]).strip() if "descripcion" in cols and vals[cols["descripcion"]] else None,
-            "priority":    normalise(vals[cols["prioridad"]] if "prioridad" in cols else None, VALID_PRIORITIES, "media"),
-            "status":      normalise(vals[cols["estado"]] if "estado" in cols else None, VALID_STATUSES, "pendiente"),
-            "dueDate":     date_str,
-            "startTime":   parse_time_cell(vals[cols["hora"]] if "hora" in cols else None),
-            "tags":        [],
-            "createdAt":   now_iso(),
-            "updatedAt":   now_iso(),
-        }
-        # Remove None description
-        if task["description"] is None:
-            del task["description"]
-        if task["startTime"] is None:
-            del task["startTime"]
+        year = start_date.year
+        if month_num:
+            try:
+                d = date(year, month_num, day_num)
+            except ValueError:
+                d = start_date  # fallback
+        else:
+            # Infer: find the day within ±10 days of start_date
+            d = None
+            for offset in range(-3, 11):
+                candidate = start_date + timedelta(days=offset)
+                if candidate.day == day_num:
+                    d = candidate
+                    break
+            if d is None:
+                d = start_date
 
-        tasks_by_date.setdefault(date_str, []).append(task)
+        # Derive day name from date if not found in the sheet
+        if not day_name:
+            day_name = DIAS_NOMBRE[d.weekday()]
 
-    if skipped:
-        print(f"  ⚠  {skipped} filas ignoradas por falta de título.")
+        days.append({"col": col, "fecha": d, "nombre": day_name})
 
-    return tasks_by_date
+    # Sort by column
+    days.sort(key=lambda x: x["col"])
+    return days
 
 
-def read_habits(ws) -> list:
-    """Returns a list of habit dicts from the 'Habitos' sheet."""
-    rows = list(ws.iter_rows(values_only=False))
-    if not rows:
-        return []
+def extract_tasks_for_day(ws, day_col: int, task_rows: range) -> list[dict]:
+    """
+    For a given day anchor column, extract tasks from the given rows.
+    Layout per row: [status_col=day_col, description_col=day_col+1]
+    """
+    tasks = []
+    for r in task_rows:
+        status_cell = ws.cell(row=r, column=day_col)
+        desc_cell   = ws.cell(row=r, column=day_col + 1)
 
-    cols = col_map(rows[0])
-    if "nombre" not in cols:
-        print("  ⚠  Hoja 'Habitos': falta la columna 'Nombre'.")
-        return []
+        desc = cell_text(desc_cell)
+        if not desc:
+            continue  # empty task row
 
-    habits = []
-    for row in rows[1:]:
-        vals = [c.value for c in row]
-        if not any(vals):
-            continue
-        name = str(vals[cols["nombre"]]).strip() if vals[cols["nombre"]] else ""
-        if not name:
-            continue
-        habits.append({
-            "id":        new_id(),
-            "name":      name,
-            "frequency": normalise(vals[cols["frecuencia"]] if "frecuencia" in cols else None, VALID_FREQ, "diaria"),
-            "color":     normalise(vals[cols["color"]] if "color" in cols else None, VALID_COLORS, "blue"),
-            "createdAt": now_iso(),
+        raw_status = cell_text(status_cell)
+        status = parse_status(raw_status)
+
+        tasks.append({
+            "texto":     desc,
+            "hecho":     status == "completada",
+            "cancelada": status == "cancelada",
+            "status":    status,
         })
-    return habits
+    return tasks
 
 
-# ── JSON builder ──────────────────────────────────────────────────────────────
+def extract_column_items(ws, col: int, rows: range) -> list[str]:
+    """Collect non-empty text values from a single column across given rows."""
+    items = []
+    for r in rows:
+        txt = cell_text(ws.cell(row=r, column=col))
+        if txt:
+            items.append(txt)
+    return items
 
-def build_json(tasks_by_date: dict, habits: list) -> dict:
-    """Assembles the full localStorage-compatible export object."""
-    data = {}
 
-    for date_str, tasks in tasks_by_date.items():
-        key = f"{SCHEMA_PREFIX}:daily:{date_str}"
-        data[key] = {
+def parse_sheet(ws) -> dict | None:
+    """
+    Parse one sheet. Returns the intermediate dict or None if not parseable.
+    """
+    title = cell_text(ws.cell(row=1, column=1))
+
+    # Accept sheets with merged-cell titles: scan row 1
+    if not title:
+        for cell in ws[1]:
+            t = cell_text(cell)
+            if t:
+                title = t
+                break
+
+    week_num = week_number_from_title(title)
+    if week_num is None:
+        return None  # not a planificador sheet
+
+    # ── exact start date ─────────────────────────────────────────────────────
+    start_date, _date_row = find_row_with_date(ws, max_row=8)
+    if start_date is None:
+        # Fallback: try to derive from ISO week
+        today = date.today()
+        d = date.fromisocalendar(today.year, week_num, 1)
+        start_date = d
+
+    # ── section header columns (Objetivos, Elementos, Emergencias) ───────────
+    sections = find_section_headers(ws, {
+        "objetivos":  "objetivos",
+        "pendientes": "pendientes",
+        "emergencias": "emergencias",
+    }, search_rows=range(3, 10))
+
+    obj_col   = sections.get("objetivos", 3)       # default col C
+    pend_col  = sections.get("pendientes")
+    emerg_col = sections.get("emergencias")
+
+    item_rows = range(8, 16)  # rows 8-15
+    objetivos  = extract_column_items(ws, obj_col,   item_rows)
+    pendientes = extract_column_items(ws, pend_col,  item_rows) if pend_col else []
+    emergencias= extract_column_items(ws, emerg_col, item_rows) if emerg_col else []
+
+    # ── day-header row (dynamic detection) ───────────────────────────────────
+    day_row = find_day_header_row(ws, search_rows=range(15, 30))
+    if day_row == -1:
+        print(f"  ⚠  No se encontró fila de días en hoja '{ws.title}'")
+        return None
+
+    day_cols = extract_day_columns(ws, day_row, start_date)
+    if not day_cols:
+        print(f"  ⚠  No se detectaron columnas de días en hoja '{ws.title}'")
+        return None
+
+    # ── task rows: from day_row+2 to a sensible end ───────────────────────────
+    task_start = day_row + 2
+    task_end   = min(task_start + 25, ws.max_row)
+    # Try to detect end of task block (large run of empty rows)
+    task_rows = range(task_start, task_end + 1)
+
+    days_data = []
+    for day_info in day_cols:
+        tareas = extract_tasks_for_day(ws, day_info["col"], task_rows)
+        days_data.append({
+            "fecha":    day_info["fecha"].strftime("%Y-%m-%d"),
+            "dia":      day_info["nombre"],
+            "tareas":   tareas,
+        })
+
+    # ── notes ─────────────────────────────────────────────────────────────────
+    notes_start = task_end + 5
+    notes_end   = min(notes_start + 15, ws.max_row)
+    # Try to find a "Notas" header to anchor the search
+    for r in range(task_end, min(task_end + 20, ws.max_row + 1)):
+        for cell in ws[r]:
+            if "nota" in cell_text(cell).lower():
+                notes_start = r + 1
+                notes_end   = min(r + 12, ws.max_row)
+                break
+
+    notas = extract_column_items(ws, obj_col, range(notes_start, notes_end + 1))
+
+    return {
+        "semana":      week_num,
+        "año":         start_date.year,
+        "fecha_inicio": start_date.strftime("%Y-%m-%d"),
+        "objetivos":   objetivos,
+        "pendientes":  pendientes,
+        "emergencias": emergencias,
+        "dias":        days_data,
+        "notas":       notas,
+    }
+
+
+# ── Planner JSON builder ──────────────────────────────────────────────────────
+
+def build_task(texto: str, status: str, due_date: str, priority: str = "media") -> dict:
+    t = {
+        "id":        new_id(),
+        "title":     texto,
+        "priority":  priority,
+        "status":    status,
+        "dueDate":   due_date,
+        "tags":      [],
+        "createdAt": now_iso(),
+        "updatedAt": now_iso(),
+    }
+    if status == "completada":
+        t["completedAt"] = now_iso()
+    return t
+
+
+def build_goal(title: str, year_month: str, color_idx: int) -> dict:
+    year, month = map(int, year_month.split("-"))
+    return {
+        "id":          new_id(),
+        "title":       title,
+        "status":      "no_iniciada",
+        "scope":       "mensual",
+        "year":        year,
+        "month":       month,
+        "progress":    0,
+        "category":    "Trabajo",
+        "color":       GOAL_COLORS[color_idx % len(GOAL_COLORS)],
+        "createdAt":   now_iso(),
+        "updatedAt":   now_iso(),
+    }
+
+
+def build_note_block(text: str, order: int) -> dict:
+    return {
+        "id":      new_id(),
+        "type":    "paragraph",
+        "content": text,
+        "order":   order,
+    }
+
+
+def week_to_planner_json(week: dict) -> dict:
+    """Convert one parsed week dict → localStorage-compatible JSON fragment."""
+    output = {}
+    first_date = week["fecha_inicio"]
+    year_month = first_date[:7]  # "YYYY-MM"
+
+    # ── daily plans ──────────────────────────────────────────────────────────
+    for i, day in enumerate(week["dias"]):
+        date_str = day["fecha"]
+        daily_key = f"{SCHEMA_PREFIX}:daily:{date_str}"
+
+        tasks = [
+            build_task(t["texto"], t["status"], date_str, "media")
+            for t in day["tareas"]
+        ]
+
+        # Inject Elementos pendientes + Emergencias into first day
+        if i == 0:
+            for txt in week["pendientes"]:
+                tasks.append(build_task(txt, "pendiente", date_str, "media"))
+            for txt in week["emergencias"]:
+                tasks.append(build_task(txt, "pendiente", date_str, "alta"))
+
+        daily_plan: dict = {
             "date":         date_str,
             "tasks":        tasks,
             "habitEntries": [],
         }
 
-    if habits:
-        key = f"{SCHEMA_PREFIX}:habits"
-        # Merge with existing key if it appears twice (shouldn't, but safe)
-        data[key] = habits
+        # Attach notas to the first day
+        if i == 0 and week["notas"]:
+            blocks = [build_note_block(n, j) for j, n in enumerate(week["notas"])]
+            daily_plan["note"] = {
+                "id":        new_id(),
+                "scopeType": "daily",
+                "scopeKey":  date_str,
+                "blocks":    blocks,
+                "updatedAt": now_iso(),
+            }
 
-    return data
+        # Merge with existing entry if present (multiple weeks may share a month)
+        if daily_key in output:
+            output[daily_key]["tasks"].extend(tasks)
+        else:
+            output[daily_key] = daily_plan
 
-
-# ── template generator ────────────────────────────────────────────────────────
-
-def create_template(output_path: Path):
-    try:
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment
-    except ImportError:
-        print("openpyxl no encontrado. Instalalo con:  pip install openpyxl")
-        sys.exit(1)
-
-    wb = openpyxl.Workbook()
-
-    # ── Hoja Tareas ──────────────────────────────────────────────────────────
-    ws_t = wb.active
-    ws_t.title = "Tareas"
-
-    header_fill = PatternFill("solid", fgColor="1F2937")
-    header_font = Font(bold=True, color="FFFFFF")
-    headers = ["Fecha", "Hora", "Titulo", "Descripcion", "Prioridad", "Estado"]
-    col_widths = [14, 8, 30, 35, 12, 14]
-
-    for i, h in enumerate(headers, 1):
-        cell = ws_t.cell(row=1, column=i, value=h)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center")
-        ws_t.column_dimensions[cell.column_letter].width = col_widths[i - 1]
-
-    monday = week_monday(date.today())
-    sample_rows = [
-        [monday.strftime("%Y-%m-%d"),           "08:00", "Revisar correos",         "",                    "baja",  "pendiente"],
-        [monday.strftime("%Y-%m-%d"),           "09:30", "Reunión de equipo",       "Revisar avances Q2",  "alta",  "pendiente"],
-        [(monday + timedelta(1)).strftime("%Y-%m-%d"), "10:00", "Preparar informe", "Informe mensual",     "media", "pendiente"],
-        ["Miércoles",                           "11:00", "Llamar al cliente",       "",                    "alta",  "pendiente"],
-        ["Jueves",                              "",      "Tarea sin horario",        "",                    "media", "pendiente"],
-        ["Viernes",                             "09:00", "Revisión semanal",        "Planificar próxima",  "media", "pendiente"],
+    # ── monthly goals (Objetivos semanales) ──────────────────────────────────
+    monthly_key = f"{SCHEMA_PREFIX}:monthly:{year_month}"
+    goals = [
+        build_goal(obj, year_month, idx)
+        for idx, obj in enumerate(week["objetivos"])
     ]
-    for row_data in sample_rows:
-        ws_t.append(row_data)
+    if goals:
+        if monthly_key in output:
+            output[monthly_key]["goals"].extend(goals)
+        else:
+            output[monthly_key] = {
+                "yearMonth": year_month,
+                "goals":     goals,
+            }
 
-    # ── Hoja Hábitos ─────────────────────────────────────────────────────────
-    ws_h = wb.create_sheet("Habitos")
-    hab_headers = ["Nombre", "Frecuencia", "Color"]
-    hab_widths  = [25, 12, 12]
-
-    for i, h in enumerate(hab_headers, 1):
-        cell = ws_h.cell(row=1, column=i, value=h)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center")
-        ws_h.column_dimensions[cell.column_letter].width = hab_widths[i - 1]
-
-    for row_data in [
-        ["Ejercicio", "diaria",  "green"],
-        ["Lectura",   "diaria",  "blue"],
-        ["Meditación","diaria",  "purple"],
-        ["Revisión sem.", "semanal", "orange"],
-    ]:
-        ws_h.append(row_data)
-
-    # ── Hoja Instrucciones ───────────────────────────────────────────────────
-    ws_i = wb.create_sheet("Instrucciones")
-    ws_i.column_dimensions["A"].width = 80
-    instructions = [
-        "INSTRUCCIONES DE USO",
-        "",
-        "1. Completa la hoja 'Tareas' con tus tareas de la semana.",
-        "2. (Opcional) Completa la hoja 'Habitos' con tus hábitos.",
-        "3. Ejecuta el script:  python scripts/import_planificador.py",
-        "4. Se generará el archivo  data/output_planificador.json",
-        "5. Abre el Planificador → barra lateral → Importar → selecciona ese archivo.",
-        "6. Recarga la página. ¡Tus datos estarán cargados!",
-        "",
-        "COLUMNA 'Fecha' admite:",
-        "  • Fecha exacta:    2026-04-14  o  14/04/2026",
-        "  • Nombre del día:  Lunes, Martes, Miércoles, Jueves, Viernes, Sábado, Domingo",
-        "",
-        "COLUMNA 'Prioridad':  alta | media | baja",
-        "COLUMNA 'Estado':     pendiente | en_progreso | completada | cancelada",
-        "COLUMNA 'Color' (hábitos): blue | green | purple | pink | orange | red | yellow | indigo",
-        "",
-        "Para generar esta plantilla nuevamente:",
-        "  python scripts/import_planificador.py --crear-plantilla",
-    ]
-    for i, line in enumerate(instructions, 1):
-        cell = ws_i.cell(row=i, column=1, value=line)
-        if i == 1:
-            cell.font = Font(bold=True, size=13)
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    wb.save(output_path)
-    print(f"✓ Plantilla creada: {output_path}")
+    return output
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Importa planificador_semanal.xlsx → JSON para el Planificador web."
+        description="Importa 'Planificador horario semana N' → JSON para Planner web."
     )
-    parser.add_argument(
-        "--entrada",
-        default="data/planificador_semanal.xlsx",
-        help="Ruta al archivo Excel (default: data/planificador_semanal.xlsx)",
-    )
-    parser.add_argument(
-        "--salida",
-        default="data/output_planificador.json",
-        help="Ruta del JSON de salida (default: data/output_planificador.json)",
-    )
-    parser.add_argument(
-        "--semana",
-        default=None,
-        help="Cualquier fecha de la semana a importar, formato YYYY-MM-DD "
-             "(default: semana actual). Aplica cuando Fecha es nombre de día.",
-    )
-    parser.add_argument(
-        "--crear-plantilla",
-        action="store_true",
-        help="Genera data/planificador_semanal.xlsx de ejemplo y termina.",
-    )
+    parser.add_argument("--entrada",  default="data/planificador_semanal.xlsx")
+    parser.add_argument("--salida",   default="data/output_planificador.json")
+    parser.add_argument("--debug",    action="store_true",
+                        help="Guarda también el JSON intermedio en data/debug_semanas.json")
+    parser.add_argument("--semana",   type=int, default=None,
+                        help="Importar solo la semana N (ignora el resto)")
     args = parser.parse_args()
 
-    entrada  = Path(args.entrada)
-    salida   = Path(args.salida)
+    entrada = Path(args.entrada)
+    salida  = Path(args.salida)
 
-    # ── plantilla ────────────────────────────────────────────────────────────
-    if args.crear_plantilla:
-        create_template(entrada)
-        return
-
-    # ── semana de referencia ─────────────────────────────────────────────────
-    if args.semana:
-        try:
-            ref_date = datetime.strptime(args.semana, "%Y-%m-%d").date()
-        except ValueError:
-            print(f"Error: formato de --semana inválido. Use YYYY-MM-DD.")
-            sys.exit(1)
-    else:
-        ref_date = date.today()
-
-    week_start = week_monday(ref_date)
-    print(f"Semana: {week_start.strftime('%d/%m/%Y')} al "
-          f"{(week_start + timedelta(6)).strftime('%d/%m/%Y')}")
-
-    # ── leer Excel ───────────────────────────────────────────────────────────
     if not entrada.exists():
-        print(f"\n  Archivo no encontrado: {entrada}")
-        print("  Primero generá la plantilla con:")
-        print("    python scripts/import_planificador.py --crear-plantilla")
+        print(f"Archivo no encontrado: {entrada}")
         sys.exit(1)
 
     try:
         import openpyxl
     except ImportError:
-        print("openpyxl no encontrado. Instalalo con:  pip install openpyxl")
+        print("Instalá openpyxl:  pip install openpyxl")
         sys.exit(1)
 
     wb = openpyxl.load_workbook(entrada, data_only=True)
-    sheet_names_lower = {s.lower(): s for s in wb.sheetnames}
 
-    print(f"\nLeyendo: {entrada}")
-    print(f"  Hojas encontradas: {', '.join(wb.sheetnames)}")
+    # Filter sheets matching the expected pattern
+    target_sheets = [
+        s for s in wb.sheetnames
+        if re.search(r"planificador\s+horario\s+semana", s, re.IGNORECASE)
+    ]
 
-    # Tasks
-    tasks_by_date: dict[str, list] = {}
-    if "tareas" in sheet_names_lower:
-        ws_t = wb[sheet_names_lower["tareas"]]
-        tasks_by_date = read_tasks(ws_t, week_start)
-        total_tasks = sum(len(v) for v in tasks_by_date.values())
-        print(f"  Tareas leídas:  {total_tasks} en {len(tasks_by_date)} día(s)")
-    else:
-        print("  ⚠  Hoja 'Tareas' no encontrada — se saltea la importación de tareas.")
-
-    # Habits
-    habits: list = []
-    if "habitos" in sheet_names_lower or "hábitos" in sheet_names_lower:
-        key = "habitos" if "habitos" in sheet_names_lower else "hábitos"
-        ws_h = wb[sheet_names_lower[key]]
-        habits = read_habits(ws_h)
-        print(f"  Hábitos leídos: {len(habits)}")
-    else:
-        print("  (Hoja 'Habitos' no encontrada — se omite)")
-
-    if not tasks_by_date and not habits:
-        print("\nNada para exportar. Verificá el formato del Excel.")
+    if not target_sheets:
+        print(f"No se encontraron hojas 'Planificador horario semana N' en {entrada}")
+        print(f"Hojas disponibles: {wb.sheetnames}")
         sys.exit(1)
 
-    # ── construir JSON ───────────────────────────────────────────────────────
-    output_data = build_json(tasks_by_date, habits)
+    print(f"Hojas encontradas: {len(target_sheets)}")
+
+    parsed_weeks = []
+    for sheet_name in target_sheets:
+        ws = wb[sheet_name]
+        result = parse_sheet(ws)
+        if result is None:
+            print(f"  ✗  {sheet_name} — no procesada")
+            continue
+        if args.semana and result["semana"] != args.semana:
+            continue
+
+        n_tasks = sum(len(d["tareas"]) for d in result["dias"])
+        print(f"  ✓  Semana {result['semana']:>2}  ({result['fecha_inicio']})  "
+              f"— {n_tasks} tareas, {len(result['objetivos'])} objetivos, "
+              f"{len(result['notas'])} notas")
+        parsed_weeks.append(result)
+
+    if not parsed_weeks:
+        print("Nada para exportar.")
+        sys.exit(1)
+
+    # ── debug intermediate JSON ───────────────────────────────────────────────
+    if args.debug:
+        debug_path = salida.parent / "debug_semanas.json"
+        debug_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(debug_path, "w", encoding="utf-8") as f:
+            json.dump(parsed_weeks, f, ensure_ascii=False, indent=2, default=str)
+        print(f"\nJSON intermedio: {debug_path}")
+
+    # ── build final planner JSON ──────────────────────────────────────────────
+    final: dict = {}
+    for week in parsed_weeks:
+        fragment = week_to_planner_json(week)
+        for key, value in fragment.items():
+            if key in final and isinstance(value, dict) and "tasks" in value:
+                final[key]["tasks"].extend(value["tasks"])
+            elif key in final and isinstance(value, dict) and "goals" in value:
+                final[key]["goals"].extend(value["goals"])
+            else:
+                final[key] = value
 
     salida.parent.mkdir(parents=True, exist_ok=True)
     with open(salida, "w", encoding="utf-8") as f:
-        json.dump(output_data, f, ensure_ascii=False, indent=2)
+        json.dump(final, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✓ Archivo generado: {salida}")
-    print("\nPasos para importar al Planificador:")
-    print("  1. Abrí la app en el navegador")
-    print("  2. En la barra lateral → sección 'Datos' → botón 'Importar'")
-    print(f"  3. Seleccioná el archivo:  {salida}")
-    print("  4. Recargá la página (F5)")
+    total_tasks = sum(
+        len(v.get("tasks", [])) for v in final.values() if isinstance(v, dict)
+    )
+    total_goals = sum(
+        len(v.get("goals", [])) for v in final.values() if isinstance(v, dict)
+    )
+    print(f"\n✓  {salida}")
+    print(f"   {len(parsed_weeks)} semana(s) · {total_tasks} tareas · {total_goals} objetivos")
+    print(f"\nCómo importar:")
+    print(f"  1. Planner → barra lateral → 'Importar'")
+    print(f"  2. Seleccioná: {salida}")
+    print(f"  3. Recargá la página (F5)")
 
 
 if __name__ == "__main__":
