@@ -14,6 +14,7 @@ export interface Task {
   startTime?: string; // "HH:MM" e.g. "09:00"
   recurrenceRule?: RecurrenceRule;
   templateId?: string; // links to RecurringTemplate
+  goalId?: string;     // links to Goal for automatic progress update
   createdAt: string;
   updatedAt: string;
 }
@@ -108,7 +109,7 @@ export interface AnnualPlan {
   goals: Goal[];
 }
 
-export type ViewType = 'diario' | 'semanal' | 'mensual' | 'anual' | 'historial';
+export type ViewType = 'diario' | 'semanal' | 'mensual' | 'anual' | 'historial' | 'estadisticas';
 
 export interface AppSettings {
   sidebarCollapsed: boolean;

@@ -1,4 +1,4 @@
-import { Calendar, CalendarDays, LayoutDashboard, ChevronLeft, ChevronRight, CalendarCheck, History, CalendarRange } from 'lucide-react';
+import { Calendar, CalendarDays, LayoutDashboard, ChevronLeft, ChevronRight, CalendarCheck, History, CalendarRange, BarChart2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ViewType } from '../../types';
 import { usePlanner } from '../../store/PlannerContext';
@@ -11,6 +11,7 @@ const NAV_ITEMS: { view: ViewType; label: string; icon: React.ElementType }[] = 
   { view: 'semanal', label: 'Semanal', icon: CalendarRange },
   { view: 'mensual', label: 'Mensual', icon: CalendarDays },
   { view: 'anual', label: 'Anual', icon: LayoutDashboard },
+  { view: 'estadisticas', label: 'Estadísticas', icon: BarChart2 },
   { view: 'historial', label: 'Historial', icon: History },
 ];
 

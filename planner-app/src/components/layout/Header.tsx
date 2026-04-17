@@ -35,6 +35,9 @@ export function Header() {
   } else if (view === 'anual') {
     title = String(selectedDate.getFullYear());
     subtitle = 'Vista anual';
+  } else if (view === 'estadisticas') {
+    title = 'Estadísticas';
+    subtitle = 'Productividad y hábitos';
   } else {
     title = 'Historial';
     subtitle = 'Registro de actividad';

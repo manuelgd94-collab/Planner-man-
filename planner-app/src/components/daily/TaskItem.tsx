@@ -19,6 +19,19 @@ const PRIORITY_DOT: Record<string, string> = {
   baja: 'bg-green-500',
 };
 
+function GoalBadge({ goalId }: { goalId: string }) {
+  const { state } = usePlanner();
+  const goal =
+    state.monthlyPlan?.goals.find(g => g.id === goalId) ??
+    state.annualPlan?.goals.find(g => g.id === goalId);
+  if (!goal) return null;
+  return (
+    <span className="inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 font-medium truncate max-w-full">
+      {goal.title}
+    </span>
+  );
+}
+
 export function TaskItem({ task, onToggle, onUpdate, onDelete }: TaskItemProps) {
   const [editing, setEditing] = useState(false);
   const { isReadOnly } = usePlanner();
@@ -51,6 +64,7 @@ export function TaskItem({ task, onToggle, onUpdate, onDelete }: TaskItemProps) 
             {task.title}
           </p>
           {task.description && <p className="text-xs text-text-secondary mt-0.5 line-clamp-2">{task.description}</p>}
+          {task.goalId && <GoalBadge goalId={task.goalId} />}
         </div>
 
         {!isReadOnly && (

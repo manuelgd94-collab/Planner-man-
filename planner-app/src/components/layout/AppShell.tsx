@@ -6,6 +6,7 @@ import { WeeklyPage } from '../../pages/WeeklyPage';
 import { MonthlyPage } from '../../pages/MonthlyPage';
 import { AnnualPage } from '../../pages/AnnualPage';
 import { HistoryPage } from '../../pages/HistoryPage';
+import { StatsPage } from '../../pages/StatsPage';
 
 export function AppShell() {
   const { state } = usePlanner();
@@ -21,6 +22,7 @@ export function AppShell() {
           {state.view === 'semanal' && <WeeklyPage />}
           {state.view === 'mensual' && <MonthlyPage />}
           {state.view === 'anual' && <AnnualPage />}
+          {state.view === 'estadisticas' && <StatsPage />}
           {state.view === 'historial' && <HistoryPage />}
         </main>
       </div>

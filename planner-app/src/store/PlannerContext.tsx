@@ -411,6 +411,20 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       detail: task?.title ?? id,
       category: 'tarea',
     });
+
+    // Auto-update linked goal progress (+10 on complete, -10 on reopen)
+    if (task?.goalId) {
+      const allGoals = [
+        ...(stateRef.current.monthlyPlan?.goals ?? []),
+        ...(stateRef.current.annualPlan?.goals ?? []),
+      ];
+      const goal = allGoals.find(g => g.id === task.goalId);
+      if (goal) {
+        const delta = wasCompleted ? -10 : 10;
+        const newProgress = Math.max(0, Math.min(100, goal.progress + delta));
+        dispatch({ type: 'UPDATE_GOAL', goal: { ...goal, progress: newProgress, updatedAt: new Date().toISOString() } });
+      }
+    }
   }, []);
 
   const addHabit = useCallback((habit: Omit<Habit, 'id' | 'createdAt'>) => {

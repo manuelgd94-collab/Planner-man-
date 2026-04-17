@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useMemo, type FormEvent } from 'react';
 import type { Task, Priority, TaskStatus, RecurrenceRule } from '../../types';
 import { Button } from '../ui/Button';
 import { PRIORIDAD_LABELS, ESTADO_LABELS } from '../../utils/constants';
+import { usePlanner } from '../../store/PlannerContext';
 
 // Time slots every 30min from 06:00 to 22:00
 const TIME_SLOTS: string[] = [];
@@ -24,12 +25,23 @@ interface TaskFormProps {
 }
 
 export function TaskForm({ initial, onSubmit, onCancel, dueDate }: TaskFormProps) {
+  const { state } = usePlanner();
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? 'media');
   const [status, setStatus] = useState<TaskStatus>(initial?.status ?? 'pendiente');
   const [startTime, setStartTime] = useState(initial?.startTime ?? '');
   const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule | ''>(initial?.recurrenceRule ?? '');
+  const [goalId, setGoalId] = useState(initial?.goalId ?? '');
+
+  const availableGoals = useMemo(() => [
+    ...(state.monthlyPlan?.goals ?? [])
+      .filter(g => g.status !== 'completada' && g.status !== 'abandonada')
+      .map(g => ({ id: g.id, label: `[Mes] ${g.title}` })),
+    ...(state.annualPlan?.goals ?? [])
+      .filter(g => g.status !== 'completada' && g.status !== 'abandonada')
+      .map(g => ({ id: g.id, label: `[Año] ${g.title}` })),
+  ], [state.monthlyPlan, state.annualPlan]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -43,6 +55,7 @@ export function TaskForm({ initial, onSubmit, onCancel, dueDate }: TaskFormProps
       tags: [],
       startTime: startTime || undefined,
       recurrenceRule: recurrenceRule || undefined,
+      goalId: goalId || undefined,
       completedAt: initial?.completedAt,
       templateId: initial?.templateId,
     });
@@ -109,6 +122,22 @@ export function TaskForm({ initial, onSubmit, onCancel, dueDate }: TaskFormProps
           </select>
         </div>
       </div>
+
+      {availableGoals.length > 0 && (
+        <div>
+          <label className="block text-xs font-medium text-text-secondary mb-1">Vincular a objetivo</label>
+          <select
+            value={goalId}
+            onChange={e => setGoalId(e.target.value)}
+            className="w-full text-sm border border-border rounded-lg px-3 py-2 outline-none focus:border-gray-400 bg-white"
+          >
+            <option value="">Sin objetivo</option>
+            {availableGoals.map(g => (
+              <option key={g.id} value={g.id}>{g.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {recurrenceRule && (
         <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
