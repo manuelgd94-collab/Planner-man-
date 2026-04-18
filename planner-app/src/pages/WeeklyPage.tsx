@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Clock, AlertCircle } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { clsx } from 'clsx';
 import { usePlanner } from '../store/PlannerContext';
 import { getWeekDays, toISODate, formatDate, capitalizeFirst } from '../utils/dateUtils';
 import { getItem, setItem, KEYS } from '../store/localStorage';
@@ -76,20 +77,27 @@ export function WeeklyPage() {
     persist({ ...weeklyPlan, emergencias });
   }
 
-  // Only past days of this week with pending tasks
+  // Past days of this week — both pending and completed-late tasks
   const overdueTasks = useMemo(() => {
     const todayISO = toISODate(new Date());
-    const groups: { date: string; label: string; tasks: { id: string; title: string; priority: string }[] }[] = [];
+    type TaskEntry = { id: string; title: string; priority: string; completedLate: boolean };
+    const groups: { date: string; label: string; tasks: TaskEntry[] }[] = [];
     for (const day of weekDays) {
       const iso = toISODate(day);
       if (iso >= todayISO) continue;
       const plan = getItem<DailyPlan>(KEYS.daily(iso));
-      const pending = (plan?.tasks ?? []).filter(t => t.status === 'pendiente' || t.status === 'en_progreso');
-      if (pending.length > 0) {
+      const all = plan?.tasks ?? [];
+      const pending   = all.filter(t => t.status === 'pendiente' || t.status === 'en_progreso');
+      const doneLate  = all.filter(t => t.status === 'completada');
+      const tasks: TaskEntry[] = [
+        ...pending.map(t => ({ id: t.id, title: t.title, priority: t.priority, completedLate: false })),
+        ...doneLate.map(t => ({ id: t.id, title: t.title, priority: t.priority, completedLate: true })),
+      ];
+      if (tasks.length > 0) {
         groups.push({
           date: iso,
           label: capitalizeFirst(formatDate(new Date(iso + 'T12:00:00'), 'EEEE d MMM')),
-          tasks: pending.map(t => ({ id: t.id, title: t.title, priority: t.priority })),
+          tasks,
         });
       }
     }
@@ -199,35 +207,57 @@ export function WeeklyPage() {
           </div>
         </div>
 
-        {/* Overdue tasks (past days of this week only) */}
-        {totalOverdue > 0 && (
-          <div className="border border-amber-300 rounded-xl bg-white overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-amber-200 bg-amber-50 flex items-center gap-2">
-              <Clock size={14} className="text-amber-600" />
-              <span className="text-sm font-semibold text-amber-800">Tareas atrasadas esta semana</span>
-              <span className="ml-1 text-xs bg-amber-200 text-amber-800 rounded-full px-2 py-0.5 font-medium">
-                {totalOverdue}
-              </span>
-            </div>
-            <div className="p-4 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3 lg:grid-cols-4">
-              {overdueTasks.map(group => (
-                <div key={group.date}>
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1.5">
-                    {group.label}
-                  </p>
-                  <div className="space-y-1">
-                    {group.tasks.map(t => (
-                      <div key={t.id} className="flex items-start gap-1.5">
-                        <AlertCircle size={11} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-xs text-text-primary leading-tight">{t.title}</span>
-                      </div>
-                    ))}
-                  </div>
+        {/* Overdue tasks (past days of this week — pending + completed late) */}
+        {totalOverdue > 0 && (() => {
+          const totalPending   = overdueTasks.reduce((s, g) => s + g.tasks.filter(t => !t.completedLate).length, 0);
+          const totalDoneLate  = overdueTasks.reduce((s, g) => s + g.tasks.filter(t => t.completedLate).length, 0);
+          return (
+            <div className="border border-amber-300 rounded-xl bg-white overflow-hidden">
+              {/* Header with KPIs */}
+              <div className="px-4 py-2.5 border-b border-amber-200 bg-amber-50 flex items-center gap-3 flex-wrap">
+                <Clock size={14} className="text-amber-600 flex-shrink-0" />
+                <span className="text-sm font-semibold text-amber-800">Tareas atrasadas esta semana</span>
+                <div className="flex items-center gap-2 ml-auto">
+                  {totalPending > 0 && (
+                    <span className="flex items-center gap-1 text-xs bg-amber-200 text-amber-800 rounded-full px-2 py-0.5 font-medium">
+                      <AlertCircle size={10} /> {totalPending} sin completar
+                    </span>
+                  )}
+                  {totalDoneLate > 0 && (
+                    <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 rounded-full px-2 py-0.5 font-medium">
+                      <CheckCircle2 size={10} /> {totalDoneLate} completada{totalDoneLate !== 1 ? 's' : ''} tarde
+                    </span>
+                  )}
                 </div>
-              ))}
+              </div>
+              <div className="p-4 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3 lg:grid-cols-4">
+                {overdueTasks.map(group => (
+                  <div key={group.date}>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1.5">
+                      {group.label}
+                    </p>
+                    <div className="space-y-1">
+                      {group.tasks.map(t => (
+                        <div key={t.id} className={clsx('flex items-start gap-1.5', t.completedLate && 'opacity-55')}>
+                          {t.completedLate
+                            ? <CheckCircle2 size={11} className="text-green-500 mt-0.5 flex-shrink-0" />
+                            : <AlertCircle  size={11} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                          }
+                          <span className={clsx('text-xs leading-tight', t.completedLate ? 'line-through text-text-muted' : 'text-text-primary')}>
+                            {t.title}
+                          </span>
+                          {t.completedLate && (
+                            <span className="flex-shrink-0 text-[9px] text-green-600 font-medium">✓</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );

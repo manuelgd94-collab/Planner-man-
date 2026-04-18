@@ -36,15 +36,15 @@ export function DailyPage() {
           <MoodTracker />
         </div>
 
-        {/* Main grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 bg-white border border-border rounded-xl p-4">
+        {/* Main grid — tasks wider */}
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12 lg:col-span-5 bg-white border border-border rounded-xl p-4">
             <TaskList />
           </div>
-          <div className="lg:col-span-1 bg-white border border-border rounded-xl p-4">
+          <div className="col-span-12 lg:col-span-4 bg-white border border-border rounded-xl p-4">
             <HabitTracker />
           </div>
-          <div className="lg:col-span-1 bg-white border border-border rounded-xl p-4">
+          <div className="col-span-12 lg:col-span-3 bg-white border border-border rounded-xl p-4">
             <DailyNotes />
           </div>
         </div>

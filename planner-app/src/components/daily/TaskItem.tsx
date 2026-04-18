@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { Task } from '../../types';
 import { Modal } from '../ui/Modal';
 import { TaskForm } from './TaskForm';
 import { usePlanner } from '../../store/PlannerContext';
+import { toISODate } from '../../utils/dateUtils';
 
 interface TaskItemProps {
   task: Task;
@@ -36,6 +37,9 @@ export function TaskItem({ task, onToggle, onUpdate, onDelete }: TaskItemProps) 
   const [editing, setEditing] = useState(false);
   const { isReadOnly } = usePlanner();
   const isCompleted = task.status === 'completada';
+  const todayISO = toISODate(new Date());
+  // Task completed on a different day than its due date
+  const isLateCompletion = isCompleted && task.dueDate < todayISO;
 
   return (
     <>
@@ -46,7 +50,7 @@ export function TaskItem({ task, onToggle, onUpdate, onDelete }: TaskItemProps) 
           e.dataTransfer.effectAllowed = 'move';
         }}
         className={clsx(
-          'group flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-surface-secondary',
+          'group flex items-start gap-2 px-2.5 py-1.5 rounded-lg transition-colors hover:bg-surface-secondary',
           !isReadOnly && 'cursor-grab active:cursor-grabbing'
         )}
       >
@@ -58,32 +62,37 @@ export function TaskItem({ task, onToggle, onUpdate, onDelete }: TaskItemProps) 
             isCompleted ? 'bg-gray-900 border-gray-900' : 'border-border hover:border-gray-400',
             isReadOnly && 'cursor-default'
           )}
-          style={{ width: 18, height: 18 }}
+          style={{ width: 15, height: 15 }}
         >
           {isCompleted && (
-            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-              <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <svg width="8" height="6" viewBox="0 0 10 8" fill="none">
+              <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
         </button>
 
-        <div className={clsx('w-2 h-2 rounded-full flex-shrink-0 mt-1.5', PRIORITY_DOT[task.priority])} />
+        <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1', PRIORITY_DOT[task.priority])} />
 
         <div className="flex-1 min-w-0">
-          <p className={clsx('text-sm font-medium leading-snug', isCompleted ? 'line-through text-text-muted' : 'text-text-primary')}>
+          <p className={clsx('text-xs font-medium leading-snug', isCompleted ? 'line-through text-text-muted' : 'text-text-primary')}>
             {task.title}
+            {isLateCompletion && (
+              <span className="ml-1.5 inline-flex items-center gap-0.5 text-[9px] px-1 py-0 rounded bg-amber-100 text-amber-700 font-semibold align-middle">
+                <Clock size={8} /> atrasada
+              </span>
+            )}
           </p>
-          {task.description && <p className="text-xs text-text-secondary mt-0.5 line-clamp-2">{task.description}</p>}
+          {task.description && <p className="text-[11px] text-text-secondary mt-0.5 line-clamp-1">{task.description}</p>}
           {task.goalId && <GoalBadge goalId={task.goalId} />}
         </div>
 
         {!isReadOnly && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-            <button onClick={() => setEditing(true)} className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface-tertiary transition-colors">
-              <Pencil size={14} />
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+            <button onClick={() => setEditing(true)} className="p-0.5 rounded text-text-muted hover:text-text-primary hover:bg-surface-tertiary transition-colors">
+              <Pencil size={12} />
             </button>
-            <button onClick={onDelete} className="p-1 rounded text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors">
-              <Trash2 size={14} />
+            <button onClick={onDelete} className="p-0.5 rounded text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors">
+              <Trash2 size={12} />
             </button>
           </div>
         )}
