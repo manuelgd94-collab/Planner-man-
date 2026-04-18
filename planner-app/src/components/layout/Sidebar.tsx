@@ -5,6 +5,7 @@ import { usePlanner } from '../../store/PlannerContext';
 import { getDaysInMonthGrid, isSameDayUtil, isTodayUtil, addMonthsUtil, subMonthsUtil } from '../../utils/dateUtils';
 import { DIAS_SEMANA, MESES } from '../../utils/constants';
 import { ExportImport } from '../settings/ExportImport';
+import { ExcelImport } from '../settings/ExcelImport';
 
 const NAV_ITEMS: { view: ViewType; label: string; icon: React.ElementType }[] = [
   { view: 'diario', label: 'Diario', icon: Calendar },
@@ -80,6 +81,10 @@ export function Sidebar({ collapsed }: SidebarProps) {
         <div className="px-3 pb-2 border-t border-border pt-2 flex-shrink-0">
           <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-2">Datos</p>
           <ExportImport />
+          <div className="mt-2 pt-2 border-t border-border">
+            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-1.5">Excel</p>
+            <ExcelImport />
+          </div>
         </div>
       )}
 
