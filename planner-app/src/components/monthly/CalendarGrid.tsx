@@ -22,10 +22,13 @@ export function CalendarGrid() {
 
   const monthLabel = capitalizeFirst(formatDate(selectedDate, 'MMMM yyyy'));
 
-  function getDayData(date: Date): { tasks: DailyPlan['tasks']; allDone: boolean } {
+  function getDayData(date: Date) {
     const plan = getItem<DailyPlan>(KEYS.daily(toISODate(date)));
     const tasks = plan?.tasks ?? [];
-    return { tasks, allDone: tasks.length > 0 && tasks.every(t => t.status === 'completada') };
+    const planned     = tasks.filter(t => !t.rescheduledFrom);
+    const rescheduled = tasks.filter(t => !!t.rescheduledFrom);
+    const allDone = tasks.length > 0 && tasks.every(t => t.status === 'completada');
+    return { tasks, planned, rescheduled, allDone };
   }
 
   return (
@@ -56,7 +59,7 @@ export function CalendarGrid() {
           if (!day) return <div key={i} />;
           const isToday = isTodayUtil(day);
           const isSelected = isSameDayUtil(day, selectedDate);
-          const { tasks, allDone } = getDayData(day);
+          const { tasks, planned, rescheduled, allDone } = getDayData(day);
           const hasTasks = tasks.length > 0;
 
           return (
@@ -79,9 +82,14 @@ export function CalendarGrid() {
                   {allDone ? (
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
                   ) : (
-                    tasks.slice(0, 3).map((t, ti) => (
-                      <div key={ti} className={clsx('w-1.5 h-1.5 rounded-full', PRIORITY_COLORS[t.priority] ?? 'bg-gray-400')} />
-                    ))
+                    <>
+                      {planned.slice(0, 2).map((t, ti) => (
+                        <div key={ti} className={clsx('w-1.5 h-1.5 rounded-full', PRIORITY_COLORS[t.priority] ?? 'bg-gray-400')} />
+                      ))}
+                      {rescheduled.length > 0 && (
+                        <div className="w-1.5 h-1.5 rounded-sm bg-orange-400" title="Reprogramadas" />
+                      )}
+                    </>
                   )}
                 </div>
               )}

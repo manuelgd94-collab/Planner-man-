@@ -222,17 +222,18 @@ function PlannedVsRescheduledChart() {
       const tasks = plan?.tasks ?? [];
       const planned    = tasks.filter(t => !t.rescheduledFrom);
       const rescheduled = tasks.filter(t => !!t.rescheduledFrom);
-      const plannedDone    = planned.filter(t => t.status === 'completada').length;
-      const plannedTotal   = planned.length;
-      const rescheduledCount = rescheduled.length;
-      return { date, iso, plannedTotal, plannedDone, rescheduledCount };
+      const plannedDone      = planned.filter(t => t.status === 'completada').length;
+      const plannedTotal     = planned.length;
+      const rescheduledDone  = rescheduled.filter(t => t.status === 'completada').length;
+      const rescheduledTotal = rescheduled.length;
+      return { date, iso, plannedTotal, plannedDone, rescheduledDone, rescheduledTotal };
     });
   }, []);
 
-  const maxBar = Math.max(...dayStats.map(s => s.plannedTotal + s.rescheduledCount), 1);
-  const daysWithData = dayStats.filter(d => d.plannedTotal > 0 || d.rescheduledCount > 0);
-  const avgRescheduled = daysWithData.length > 0
-    ? (daysWithData.reduce((s, d) => s + d.rescheduledCount, 0) / daysWithData.length).toFixed(1)
+  const maxBar = Math.max(...dayStats.map(s => s.plannedTotal + s.rescheduledTotal), 1);
+  const daysWithData = dayStats.filter(d => d.rescheduledTotal > 0);
+  const avgRescheduledDone = daysWithData.length > 0
+    ? (daysWithData.reduce((s, d) => s + d.rescheduledDone, 0) / daysWithData.length).toFixed(1)
     : '0';
 
   return (
@@ -241,37 +242,41 @@ function PlannedVsRescheduledChart() {
         Planificadas vs Reprogramadas — últimos 14 días
       </h3>
       <p className="text-xs text-text-muted mb-4">
-        Respaldo del cumplimiento diario · promedio reprogramadas/día: {avgRescheduled}
+        Respaldo del cumplimiento diario · promedio reprogramadas completadas/día: {avgRescheduledDone}
       </p>
       <div className="flex items-end gap-1" style={{ height: 100 }}>
-        {dayStats.map(({ date, plannedTotal, plannedDone, rescheduledCount }, i) => {
-          const total = plannedTotal + rescheduledCount;
+        {dayStats.map(({ date, plannedTotal, plannedDone, rescheduledDone, rescheduledTotal }, i) => {
+          const total = plannedTotal + rescheduledTotal;
           const barH = total === 0 ? 3 : Math.max(8, (total / maxBar) * 100);
           const plannedFrac = total > 0 ? plannedTotal / total : 0;
-          const doneFrac = plannedTotal > 0 ? plannedDone / plannedTotal : 0;
+          const reschFrac   = total > 0 ? rescheduledTotal / total : 0;
+          const plannedDonePct = plannedTotal > 0 ? plannedDone / plannedTotal : 0;
+          const reschDonePct   = rescheduledTotal > 0 ? rescheduledDone / rescheduledTotal : 0;
           return (
             <div key={i} className="flex-1 flex flex-col items-center justify-end group relative" style={{ height: 100 }}>
               {total > 0 ? (
                 <div
                   className="w-full rounded-t bg-gray-100 relative overflow-hidden"
-                  style={{ height: `${barH}%`, opacity: total === 0 ? 0.3 : 1 }}
+                  style={{ height: `${barH}%` }}
                 >
-                  {/* Orange segment = rescheduled (bottom) */}
-                  {rescheduledCount > 0 && (
-                    <div
-                      className="absolute bottom-0 left-0 right-0 bg-orange-300"
-                      style={{ height: `${Math.round((1 - plannedFrac) * 100)}%` }}
-                    />
+                  {/* Orange segment = rescheduled (bottom), darker = completed */}
+                  {rescheduledTotal > 0 && (
+                    <>
+                      <div className="absolute bottom-0 left-0 right-0 bg-orange-200"
+                        style={{ height: `${Math.round(reschFrac * 100)}%` }} />
+                      {rescheduledDone > 0 && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-orange-400"
+                          style={{ height: `${Math.round(reschFrac * reschDonePct * 100)}%` }} />
+                      )}
+                    </>
                   )}
-                  {/* Green segment = planned done (above rescheduled) */}
+                  {/* Green segment = planned completed (above rescheduled) */}
                   {plannedDone > 0 && (
-                    <div
-                      className="absolute left-0 right-0 bg-green-500"
+                    <div className="absolute left-0 right-0 bg-green-500"
                       style={{
-                        bottom: `${Math.round((1 - plannedFrac) * 100)}%`,
-                        height: `${Math.round(plannedFrac * doneFrac * 100)}%`,
-                      }}
-                    />
+                        bottom: `${Math.round(reschFrac * 100)}%`,
+                        height: `${Math.round(plannedFrac * plannedDonePct * 100)}%`,
+                      }} />
                   )}
                 </div>
               ) : (
@@ -280,7 +285,7 @@ function PlannedVsRescheduledChart() {
               <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
                 <div className="bg-gray-900 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap text-center">
                   <div>{capitalizeFirst(formatDate(date, 'EEE d MMM'))}</div>
-                  <div>Plan: {plannedDone}/{plannedTotal} ✓ · Reprog: {rescheduledCount}</div>
+                  <div>Plan: {plannedDone}/{plannedTotal} ✓ · Reprog: {rescheduledDone}/{rescheduledTotal} ✓</div>
                 </div>
                 <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
               </div>
@@ -298,7 +303,8 @@ function PlannedVsRescheduledChart() {
       <div className="flex items-center gap-4 mt-3">
         <LegendDot color="bg-green-500" label="Planificadas completadas" />
         <LegendDot color="bg-gray-100 border border-gray-200" label="Planificadas pendientes" />
-        <LegendDot color="bg-orange-300" label="Reprogramadas del día" />
+        <LegendDot color="bg-orange-400" label="Reprogramadas completadas" />
+        <LegendDot color="bg-orange-200 border border-orange-300" label="Reprogramadas pendientes" />
       </div>
     </div>
   );
