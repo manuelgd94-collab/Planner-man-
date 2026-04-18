@@ -60,10 +60,11 @@ function toISO(d: Date): string {
 
 // ── sheet parser ──────────────────────────────────────────────────────────────
 
-function parseSheet(ws: XLSX.WorkSheet, sheetName: string): ParsedWeek | null {
-  // sheet_to_json with header:1 → 2D array (0-based row/col indices)
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: null });
-  if (!rows.length) return null;
+function parseSheet(ws: XLSX.WorkSheet, sheetName: string): ParsedWeek | string {
+  // Use raw: true to get actual cell values without date conversion
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: null, raw: false });
+  const rawRows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: null, raw: true });
+  if (!rows.length) return `Hoja vacía: ${sheetName}`;
 
   // Week number: scan first 5 rows for "semana N", fallback to sheet name
   let weekNum = 0;
@@ -78,7 +79,24 @@ function parseSheet(ws: XLSX.WorkSheet, sheetName: string): ParsedWeek | null {
     const m = sheetName.match(/semana\s+(\d+)/i);
     if (m) weekNum = parseInt(m[1]);
   }
-  if (!weekNum) return null;
+  if (!weekNum) return `No se encontró número de semana en "${sheetName}". Primera celda: "${String(rows[0]?.[0] ?? '')}"`;
+
+  // Helper to extract integer day from a raw cell value
+  function toDayNum(v: unknown): number {
+    if (v === null || v === undefined) return 0;
+    if (typeof v === 'number') {
+      const n = Math.round(v);
+      if (n >= 1 && n <= 31) return n;
+    }
+    if (typeof v === 'string') {
+      const s = v.trim();
+      if (/^\d{1,2}$/.test(s)) {
+        const n = parseInt(s);
+        if (n >= 1 && n <= 31) return n;
+      }
+    }
+    return 0;
+  }
 
   // Start date: scan all rows for any "DD-MM-YYYY" or "DD/MM/YYYY"
   let startDate: Date | null = null;
@@ -127,35 +145,30 @@ function parseSheet(ws: XLSX.WorkSheet, sheetName: string): ParsedWeek | null {
     if (e) emergencias.push(e);
   }
 
-  // Find day-header row: the row with the most integer values in 1-31
-  // Search the whole sheet
+  // Find day-header row: the row with the most day-number values in 1-31
+  // Use rawRows for number detection (avoids date-formatted cells issues)
   let dayRow = -1, bestCount = 0;
-  for (let r = 0; r < rows.length; r++) {
+  for (let r = 0; r < rawRows.length; r++) {
     let count = 0;
-    for (const cell of rows[r] ?? []) {
-      if (cell === null || cell === undefined) continue;
-      if (typeof cell === 'number' && Number.isInteger(cell) && cell >= 1 && cell <= 31) count++;
-      else if (typeof cell === 'string' && /^\s*\d{1,2}\s*$/.test(cell)) {
-        const n = parseInt(cell.trim());
-        if (n >= 1 && n <= 31) count++;
-      }
+    for (const cell of rawRows[r] ?? []) {
+      if (toDayNum(cell) > 0) count++;
     }
     if (count > bestCount) { bestCount = count; dayRow = r; }
   }
-  if (dayRow < 0 || bestCount < 2) return null;
+  if (dayRow < 0 || bestCount < 2) {
+    // Build diagnostic: show row contents where best candidate was
+    const rowSample = (rawRows[dayRow >= 0 ? dayRow : 0] ?? [])
+      .map(v => String(v ?? '')).filter(Boolean).slice(0, 8).join(', ');
+    return `No se encontró fila de días (semana ${weekNum}). Mejor fila tenía ${bestCount} número(s). Muestra: [${rowSample}]. Filas totales: ${rawRows.length}`;
+  }
 
   // Build day-column list from the day-header row
   interface DayCol { col: number; fecha: Date; dia: string }
   const dayCols: DayCol[] = [];
 
-  for (let c = 0; c < (rows[dayRow]?.length ?? 0); c++) {
-    const v = cellVal(rows, dayRow, c);
-    let dayNum = 0;
-    if (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 31) dayNum = v;
-    else if (typeof v === 'string' && /^\s*\d{1,2}\s*$/.test(v)) {
-      const n = parseInt(v.trim());
-      if (n >= 1 && n <= 31) dayNum = n;
-    }
+  for (let c = 0; c < (rawRows[dayRow]?.length ?? 0); c++) {
+    const v = rawRows[dayRow][c];
+    const dayNum = toDayNum(v);
     if (!dayNum) continue;
 
     // Find month name in adjacent rows (check up to 4 rows below)
@@ -191,7 +204,7 @@ function parseSheet(ws: XLSX.WorkSheet, sheetName: string): ParsedWeek | null {
       dia: DIAS_NOMBRE[fecha.getDay() === 0 ? 6 : fecha.getDay() - 1],
     });
   }
-  if (!dayCols.length) return null;
+  if (!dayCols.length) return `Fila de días encontrada (fila ${dayRow + 1}) pero no se pudo construir columnas de días.`;
 
   // Extract tasks per day (rows dayRow+2 … dayRow+40)
   const taskStart = dayRow + 2;
@@ -336,14 +349,16 @@ export function ExcelImport() {
         }
 
         const weeks: ParsedWeek[] = [];
+        const errors: string[] = [];
         for (const name of targetSheets) {
           const parsed = parseSheet(wb.Sheets[name], name);
-          if (parsed) weeks.push(parsed);
+          if (typeof parsed === 'string') errors.push(parsed);
+          else weeks.push(parsed);
         }
 
         if (!weeks.length) {
           setStatus('error');
-          setMessage('No se pudo extraer datos de ninguna hoja. Verificá que el formato coincida.');
+          setMessage(`No se pudo extraer datos. Diagnóstico:\n${errors.join('\n')}`);
           return;
         }
 
