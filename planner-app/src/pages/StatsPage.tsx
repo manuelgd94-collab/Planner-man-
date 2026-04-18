@@ -100,7 +100,7 @@ function EmergencyFrequencyChart() {
   const weekStats = useMemo(() => {
     return getLastWeekStarts(8).map(weekStart => {
       const plan = getItem<WeeklyPlan>(KEYS.weekly(toISODate(weekStart)));
-      const count = plan?.emergencias?.length ?? 0;
+      const count = Array.isArray(plan?.emergencias) ? plan.emergencias.length : 0;
       return { weekStart, count };
     });
   }, []);
@@ -145,7 +145,7 @@ function CarryOverChart() {
   const weekStats = useMemo(() => {
     return getLastWeekStarts(8).map(weekStart => {
       const plan = getItem<WeeklyPlan>(KEYS.weekly(toISODate(weekStart)));
-      const pendientes = plan?.pendientes ?? [];
+      const pendientes = Array.isArray(plan?.pendientes) ? plan.pendientes : [];
       const total = pendientes.length;
       const carriedOver = pendientes.filter(p => p.carriedOver).length;
       const uncompleted = pendientes.filter(p => !p.completed).length;

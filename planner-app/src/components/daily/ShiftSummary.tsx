@@ -25,8 +25,8 @@ export function ShiftSummary({ open, onClose, date }: ShiftSummaryProps) {
 
   const weekStart = toISODate(getWeekDays(new Date(date + 'T12:00:00'))[0]);
   const weeklyPlan = getItem<WeeklyPlan>(KEYS.weekly(weekStart));
-  const emergencias = weeklyPlan?.emergencias ?? [];
-  const pendientesSemanales = weeklyPlan?.pendientes ?? [];
+  const emergencias = Array.isArray(weeklyPlan?.emergencias) ? weeklyPlan.emergencias : [];
+  const pendientesSemanales = Array.isArray(weeklyPlan?.pendientes) ? weeklyPlan.pendientes : [];
 
   const dateLabel = capitalizeFirst(formatDate(new Date(date + 'T12:00:00'), "EEEE d 'de' MMMM yyyy"));
   const pct = tasks.length > 0 ? Math.round((completed.length / tasks.length) * 100) : 0;
