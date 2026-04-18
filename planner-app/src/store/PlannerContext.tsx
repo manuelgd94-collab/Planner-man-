@@ -491,10 +491,16 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateDailyNote = useCallback((blocks: NoteBlock[], scopeKey: string) => {
-    dispatch({
-      type: 'UPDATE_DAILY_NOTE',
-      note: { id: crypto.randomUUID(), scopeType: 'daily', scopeKey, blocks, updatedAt: now() },
-    });
+    const note: Note = { id: crypto.randomUUID(), scopeType: 'daily', scopeKey, blocks, updatedAt: now() };
+    dispatch({ type: 'UPDATE_DAILY_NOTE', note });
+    // Write directly to storage — React effects are not guaranteed to flush before a hard refresh.
+    const currentPlan = stateRef.current.dailyPlan;
+    const key = KEYS.daily(scopeKey);
+    if (currentPlan) {
+      setItem(key, { ...currentPlan, note });
+    } else {
+      setItem(key, { date: scopeKey, tasks: [], habitEntries: [], note });
+    }
     addHistoryEntry({ action: 'Nota diaria actualizada', detail: scopeKey, category: 'nota' });
   }, []);
 

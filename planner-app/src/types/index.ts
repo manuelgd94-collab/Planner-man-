@@ -91,10 +91,10 @@ export interface Goal {
 }
 
 export interface WeeklyPlan {
-  weekStart: string;    // ISO date of Thursday
-  objetivo: string;     // free-text weekly goal
-  pendientes: string;   // free-text pending items (one per line)
-  emergencias: string;  // free-text emergencies (one per line)
+  weekStart: string;       // ISO date of Thursday
+  goals: Goal[];           // weekly objectives with progress tracking
+  pendientes: string;      // free-text pending items (one per line)
+  emergencias: string;     // free-text emergencies (one per line)
 }
 
 export interface DailyPlan {

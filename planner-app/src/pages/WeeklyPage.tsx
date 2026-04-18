@@ -3,8 +3,13 @@ import { Clock, AlertCircle } from 'lucide-react';
 import { usePlanner } from '../store/PlannerContext';
 import { getWeekDays, toISODate, formatDate, capitalizeFirst } from '../utils/dateUtils';
 import { getItem, setItem, KEYS } from '../store/localStorage';
-import type { DailyPlan, WeeklyPlan } from '../types';
+import type { DailyPlan, WeeklyPlan, Goal } from '../types';
 import { WeekDayColumn } from '../components/weekly/WeekDayColumn';
+import { WeeklyGoals } from '../components/weekly/WeeklyGoals';
+
+function emptyWeeklyPlan(weekStart: string): WeeklyPlan {
+  return { weekStart, goals: [], pendientes: '', emergencias: '' };
+}
 
 export function WeeklyPage() {
   const { state, dispatch, isReadOnly } = usePlanner();
@@ -15,29 +20,44 @@ export function WeeklyPage() {
     return weekDays.map(day => getItem<DailyPlan>(KEYS.daily(toISODate(day))));
   }, [weekDays]);
 
-  const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan>(() =>
-    getItem<WeeklyPlan>(KEYS.weekly(weekStart)) ?? { weekStart, objetivo: '', pendientes: '', emergencias: '' }
-  );
+  const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan>(() => {
+    const saved = getItem<WeeklyPlan>(KEYS.weekly(weekStart));
+    // Migrate old format (objetivo: string → goals: Goal[])
+    if (saved && 'objetivo' in saved) {
+      return { ...emptyWeeklyPlan(weekStart), pendientes: (saved as any).pendientes ?? '', emergencias: (saved as any).emergencias ?? '' };
+    }
+    return saved ?? emptyWeeklyPlan(weekStart);
+  });
 
   useEffect(() => {
-    setWeeklyPlan(
-      getItem<WeeklyPlan>(KEYS.weekly(weekStart)) ?? { weekStart, objetivo: '', pendientes: '', emergencias: '' }
-    );
+    const saved = getItem<WeeklyPlan>(KEYS.weekly(weekStart));
+    if (saved && 'objetivo' in saved) {
+      setWeeklyPlan({ ...emptyWeeklyPlan(weekStart), pendientes: (saved as any).pendientes ?? '', emergencias: (saved as any).emergencias ?? '' });
+    } else {
+      setWeeklyPlan(saved ?? emptyWeeklyPlan(weekStart));
+    }
   }, [weekStart]);
 
-  function updateField(field: keyof Omit<WeeklyPlan, 'weekStart'>, value: string) {
-    const updated = { ...weeklyPlan, [field]: value };
+  function persist(updated: WeeklyPlan) {
     setWeeklyPlan(updated);
     setItem(KEYS.weekly(weekStart), updated);
   }
 
-  // Show only past days within this week that have pending/in-progress tasks
+  function updateGoals(goals: Goal[]) {
+    persist({ ...weeklyPlan, goals });
+  }
+
+  function updateField(field: 'pendientes' | 'emergencias', value: string) {
+    persist({ ...weeklyPlan, [field]: value });
+  }
+
+  // Only past days of this week with pending tasks
   const overdueTasks = useMemo(() => {
     const todayISO = toISODate(new Date());
     const groups: { date: string; label: string; tasks: { id: string; title: string; priority: string }[] }[] = [];
     for (const day of weekDays) {
       const iso = toISODate(day);
-      if (iso >= todayISO) continue; // only days already passed
+      if (iso >= todayISO) continue;
       const plan = getItem<DailyPlan>(KEYS.daily(iso));
       const pending = (plan?.tasks ?? []).filter(t => t.status === 'pendiente' || t.status === 'en_progreso');
       if (pending.length > 0) {
@@ -69,14 +89,21 @@ export function WeeklyPage() {
 
         {/* Note boxes */}
         <div className="grid grid-cols-3 gap-3">
-          <NoteBox
-            label="Objetivos semanales"
-            value={weeklyPlan.objetivo}
-            onChange={v => updateField('objetivo', v)}
-            readOnly={isReadOnly}
-            headerClass="bg-green-700 text-white"
-            borderClass="border-green-400"
-          />
+          {/* Objetivos semanales — same format as monthly goals */}
+          <div className="border rounded-xl overflow-hidden border-green-400 flex flex-col">
+            <div className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-center bg-green-700 text-white flex-shrink-0">
+              Objetivos semanales
+            </div>
+            <div className="flex-1 p-2 bg-white min-h-[130px]">
+              <WeeklyGoals
+                goals={weeklyPlan.goals}
+                weekStart={weekStart}
+                readOnly={isReadOnly}
+                onChange={updateGoals}
+              />
+            </div>
+          </div>
+
           <NoteBox
             label="Elementos pendientes"
             value={weeklyPlan.pendientes}
@@ -107,12 +134,12 @@ export function WeeklyPage() {
           ))}
         </div>
 
-        {/* Overdue tasks */}
+        {/* Overdue tasks (past days of this week only) */}
         {totalOverdue > 0 && (
           <div className="border border-amber-300 rounded-xl bg-white overflow-hidden">
             <div className="px-4 py-2.5 border-b border-amber-200 bg-amber-50 flex items-center gap-2">
               <Clock size={14} className="text-amber-600" />
-              <span className="text-sm font-semibold text-amber-800">Tareas atrasadas</span>
+              <span className="text-sm font-semibold text-amber-800">Tareas atrasadas esta semana</span>
               <span className="ml-1 text-xs bg-amber-200 text-amber-800 rounded-full px-2 py-0.5 font-medium">
                 {totalOverdue}
               </span>

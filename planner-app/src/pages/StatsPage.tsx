@@ -6,21 +6,17 @@ import { getItem, KEYS } from '../store/localStorage';
 import { subDaysUtil, toISODate, formatDate, capitalizeFirst } from '../utils/dateUtils';
 import type { DailyPlan } from '../types';
 
-function getLast7Days(): Date[] {
+function getLast(n: number): Date[] {
   const days: Date[] = [];
-  for (let i = 6; i >= 0; i--) {
-    days.push(subDaysUtil(new Date(), i));
-  }
+  for (let i = n - 1; i >= 0; i--) days.push(subDaysUtil(new Date(), i));
   return days;
 }
 
 function calcStreak(habitId: string): number {
   let streak = 0;
   for (let i = 0; i < 90; i++) {
-    const dateStr = toISODate(subDaysUtil(new Date(), i));
-    const plan = getItem<DailyPlan>(KEYS.daily(dateStr));
-    const done = plan?.habitEntries.find(e => e.habitId === habitId)?.completed;
-    if (done) streak++;
+    const plan = getItem<DailyPlan>(KEYS.daily(toISODate(subDaysUtil(new Date(), i))));
+    if (plan?.habitEntries.find(e => e.habitId === habitId)?.completed) streak++;
     else break;
   }
   return streak;
@@ -36,10 +32,20 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   );
 }
 
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
+      <span className={clsx('w-3 h-3 rounded-sm inline-block', color)} />
+      {label}
+    </span>
+  );
+}
+
 export function StatsPage() {
   const { state } = usePlanner();
   const habits = useMemo(() => state.habits.filter(h => !h.archivedAt), [state.habits]);
-  const last7 = useMemo(() => getLast7Days(), []);
+  const last7 = useMemo(() => getLast(7), []);
+  const last30 = useMemo(() => getLast(30), []);
 
   const weekPlans = useMemo(
     () => last7.map(d => ({ date: d, plan: getItem<DailyPlan>(KEYS.daily(toISODate(d))) })),
@@ -47,37 +53,46 @@ export function StatsPage() {
   );
 
   const weekStats = useMemo(
-    () =>
-      weekPlans.map(({ date, plan }) => ({
-        date,
-        total: plan?.tasks.length ?? 0,
-        completed: plan?.tasks.filter(t => t.status === 'completada').length ?? 0,
-      })),
+    () => weekPlans.map(({ date, plan }) => ({
+      date,
+      total: plan?.tasks.length ?? 0,
+      completed: plan?.tasks.filter(t => t.status === 'completada').length ?? 0,
+    })),
     [weekPlans]
+  );
+
+  // 30-day daily completion % for the main chart
+  const monthStats = useMemo(
+    () => last30.map(d => {
+      const plan = getItem<DailyPlan>(KEYS.daily(toISODate(d)));
+      const total = plan?.tasks.length ?? 0;
+      const completed = plan?.tasks.filter(t => t.status === 'completada').length ?? 0;
+      const pct = total > 0 ? Math.round((completed / total) * 100) : null;
+      return { date: d, total, completed, pct };
+    }),
+    [last30]
   );
 
   const maxBar = Math.max(...weekStats.map(s => s.total), 1);
 
   const habitStats = useMemo(
-    () =>
-      habits.map(habit => {
-        const checks = weekPlans.map(
-          ({ plan }) => plan?.habitEntries.find(e => e.habitId === habit.id)?.completed ?? false
-        );
-        const doneCount = checks.filter(Boolean).length;
-        const pct = Math.round((doneCount / 7) * 100);
-        const streak = calcStreak(habit.id);
-        return { habit, doneCount, pct, streak };
-      }),
+    () => habits.map(habit => {
+      const checks = weekPlans.map(({ plan }) =>
+        plan?.habitEntries.find(e => e.habitId === habit.id)?.completed ?? false
+      );
+      const doneCount = checks.filter(Boolean).length;
+      const pct = Math.round((doneCount / 7) * 100);
+      return { habit, doneCount, pct, streak: calcStreak(habit.id) };
+    }),
     [habits, weekPlans]
   );
 
   const totalWeek = weekStats.reduce((s, d) => s + d.completed, 0);
-  const avgHabitPct =
-    habitStats.length > 0
-      ? Math.round(habitStats.reduce((s, h) => s + h.pct, 0) / habitStats.length)
-      : 0;
   const maxStreak = habitStats.length > 0 ? Math.max(...habitStats.map(h => h.streak)) : 0;
+
+  const daysWithTasks = monthStats.filter(d => d.pct !== null);
+  const avgCompletionPct = daysWithTasks.length > 0
+    ? Math.round(daysWithTasks.reduce((s, d) => s + (d.pct ?? 0), 0) / daysWithTasks.length) : 0;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -86,7 +101,7 @@ export function StatsPage() {
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-4">
           <StatCard label="Tareas completadas" value={totalWeek} sub="esta semana" />
-          <StatCard label="Hábitos cumplidos" value={`${avgHabitPct}%`} sub="promedio semanal" />
+          <StatCard label="Cumplimiento promedio" value={`${avgCompletionPct}%`} sub="últimos 30 días" />
           <StatCard
             label="Racha más larga"
             value={maxStreak > 0 ? `${maxStreak} días` : '—'}
@@ -94,7 +109,55 @@ export function StatsPage() {
           />
         </div>
 
-        {/* Task bar chart */}
+        {/* % Completion chart — 30 days */}
+        <div className="bg-white border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-text-primary mb-1">
+            % Cumplimiento diario — últimos 30 días
+          </h3>
+          <p className="text-xs text-text-muted mb-4">Tareas completadas vs total · verde ≥80%, naranja 50–79%, rojo &lt;50%</p>
+          <div className="flex items-end gap-0.5" style={{ height: 100 }}>
+            {monthStats.map(({ date, pct }, i) => {
+              const barColor = pct === null ? 'bg-gray-100'
+                : pct >= 80 ? 'bg-green-500'
+                : pct >= 50 ? 'bg-amber-400'
+                : 'bg-red-400';
+              const heightPct = pct === null ? 4 : Math.max(6, pct);
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center justify-end group relative" style={{ height: 100 }}>
+                  <div
+                    className={clsx('w-full rounded-t transition-all duration-300', barColor)}
+                    style={{ height: `${heightPct}%` }}
+                  />
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                    <div className="bg-gray-900 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap">
+                      {capitalizeFirst(formatDate(date, 'EEE d MMM'))}{pct !== null ? `: ${pct}%` : ': sin tareas'}
+                    </div>
+                    <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* X-axis labels every 7 days */}
+          <div className="flex mt-1.5">
+            {monthStats.map(({ date }, i) => (
+              <div key={i} className="flex-1 flex justify-center">
+                {i % 7 === 0 && (
+                  <span className="text-[9px] text-text-muted">{formatDate(date, 'd/M')}</span>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-4 mt-3">
+            <LegendDot color="bg-green-500" label="≥ 80%" />
+            <LegendDot color="bg-amber-400" label="50–79%" />
+            <LegendDot color="bg-red-400" label="< 50%" />
+            <LegendDot color="bg-gray-100 border border-gray-200" label="Sin tareas" />
+          </div>
+        </div>
+
+        {/* Task count bar chart — 7 days */}
         <div className="bg-white border border-border rounded-xl p-5">
           <h3 className="text-sm font-semibold text-text-primary mb-5">
             Tareas completadas — últimos 7 días
@@ -102,8 +165,7 @@ export function StatsPage() {
           <div className="flex items-end gap-2" style={{ height: 120 }}>
             {weekStats.map(({ date, total, completed }) => (
               <div key={date.toISOString()} className="flex-1 flex flex-col items-center gap-1.5">
-                {/* bar */}
-                <div className="w-full flex items-end justify-center" style={{ height: 88 }}>
+                <div className="w-full flex items-end justify-center relative" style={{ height: 88 }}>
                   {total > 0 ? (
                     <div
                       className="w-full rounded-t-md bg-gray-100 relative overflow-hidden"
@@ -118,7 +180,6 @@ export function StatsPage() {
                     <div className="w-full h-1 rounded-full bg-gray-100" />
                   )}
                 </div>
-                {/* label */}
                 <span className="text-[10px] text-text-muted">
                   {capitalizeFirst(formatDate(date, 'EEE'))}
                 </span>
@@ -135,15 +196,9 @@ export function StatsPage() {
         </div>
 
         {/* Habits */}
-        <div className="bg-white border border-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">
-            Hábitos — semana actual
-          </h3>
-          {habitStats.length === 0 ? (
-            <p className="text-sm text-text-muted text-center py-6">
-              No hay hábitos configurados todavía.
-            </p>
-          ) : (
+        {habitStats.length > 0 && (
+          <div className="bg-white border border-border rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-text-primary mb-4">Hábitos — semana actual</h3>
             <div className="space-y-4">
               {habitStats.map(({ habit, doneCount, pct, streak }) => (
                 <div key={habit.id}>
@@ -153,8 +208,7 @@ export function StatsPage() {
                       <span className="text-xs text-text-muted">{doneCount}/7 días</span>
                       {streak > 0 && (
                         <span className={clsx('flex items-center gap-1 text-xs font-medium', streak >= 7 ? 'text-orange-500' : 'text-text-secondary')}>
-                          <Flame size={12} />
-                          {streak}
+                          <Flame size={12} /> {streak}
                         </span>
                       )}
                       <span className="text-xs font-semibold text-text-primary w-8 text-right">{pct}%</span>
@@ -162,39 +216,37 @@ export function StatsPage() {
                   </div>
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                      className={clsx('h-full rounded-full transition-all duration-500', pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-400' : 'bg-gray-400')}
+                      className={clsx('h-full rounded-full transition-all duration-500',
+                        pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-400' : 'bg-gray-400')}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Day-by-day breakdown */}
+        {/* Day-by-day detail */}
         <div className="bg-white border border-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">
-            Detalle por día
-          </h3>
+          <h3 className="text-sm font-semibold text-text-primary mb-4">Detalle por día — semana</h3>
           <div className="space-y-2">
             {weekStats.map(({ date, total, completed }) => {
               const pct = total > 0 ? Math.round((completed / total) * 100) : null;
+              const barColor = pct === null ? '' : pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-400';
               return (
                 <div key={date.toISOString()} className="flex items-center gap-3">
-                  <span className="text-xs text-text-secondary w-20 flex-shrink-0">
+                  <span className="text-xs text-text-secondary w-24 flex-shrink-0">
                     {capitalizeFirst(formatDate(date, 'EEE d MMM'))}
                   </span>
-                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                     {pct !== null && (
-                      <div
-                        className="h-full bg-gray-700 rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className={clsx('h-full rounded-full transition-all duration-500', barColor)}
+                        style={{ width: `${pct}%` }} />
                     )}
                   </div>
-                  <span className="text-xs text-text-muted w-12 text-right flex-shrink-0">
-                    {total === 0 ? 'sin tareas' : `${completed}/${total}`}
+                  <span className="text-xs text-text-muted w-24 text-right flex-shrink-0">
+                    {total === 0 ? 'sin tareas' : `${completed}/${total} · ${pct}%`}
                   </span>
                 </div>
               );
@@ -204,14 +256,5 @@ export function StatsPage() {
 
       </div>
     </div>
-  );
-}
-
-function LegendDot({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
-      <span className={clsx('w-3 h-3 rounded-sm inline-block', color)} />
-      {label}
-    </span>
   );
 }
