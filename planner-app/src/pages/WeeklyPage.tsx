@@ -89,6 +89,7 @@ export function WeeklyPage() {
       const all = plan?.tasks ?? [];
       const pending   = all.filter(t => t.status === 'pendiente' || t.status === 'en_progreso');
       const doneLate  = all.filter(t => t.status === 'completada');
+      // reprogramada tasks excluded — they were intentionally moved to another day
       const tasks: TaskEntry[] = [
         ...pending.map(t => ({ id: t.id, title: t.title, priority: t.priority, completedLate: false })),
         ...doneLate.map(t => ({ id: t.id, title: t.title, priority: t.priority, completedLate: true })),

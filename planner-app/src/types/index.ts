@@ -1,5 +1,5 @@
 export type Priority = 'alta' | 'media' | 'baja';
-export type TaskStatus = 'pendiente' | 'en_progreso' | 'completada' | 'cancelada';
+export type TaskStatus = 'pendiente' | 'en_progreso' | 'completada' | 'cancelada' | 'reprogramada';
 export type RecurrenceRule = 'diaria' | 'semanal' | 'mensual';
 
 export interface Task {
@@ -12,6 +12,7 @@ export interface Task {
   completedAt?: string;
   tags: string[];
   startTime?: string; // "HH:MM" e.g. "09:00"
+  rescheduledFrom?: string; // ISO date of original day if task was moved from another day
   recurrenceRule?: RecurrenceRule;
   templateId?: string; // links to RecurringTemplate
   goalId?: string;     // links to Goal for automatic progress update

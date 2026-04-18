@@ -6,6 +6,7 @@ import { DailyNotes } from '../components/daily/DailyNotes';
 import { MoodTracker } from '../components/daily/MoodTracker';
 import { TimeBlocks } from '../components/daily/TimeBlocks';
 import { ShiftSummary } from '../components/daily/ShiftSummary';
+import { OverdueTasks } from '../components/daily/OverdueTasks';
 import { usePlanner } from '../store/PlannerContext';
 import { toISODate, formatDate, capitalizeFirst } from '../utils/dateUtils';
 
@@ -38,8 +39,11 @@ export function DailyPage() {
 
         {/* Main grid — tasks wider */}
         <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-12 lg:col-span-5 bg-white border border-border rounded-xl p-4">
-            <TaskList />
+          <div className="col-span-12 lg:col-span-5 flex flex-col gap-3">
+            <div className="bg-white border border-border rounded-xl p-4">
+              <TaskList />
+            </div>
+            <OverdueTasks />
           </div>
           <div className="col-span-12 lg:col-span-4 bg-white border border-border rounded-xl p-4">
             <HabitTracker />

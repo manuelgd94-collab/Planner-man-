@@ -5,6 +5,8 @@ import { usePlanner } from '../../store/PlannerContext';
 import { Modal } from '../ui/Modal';
 import { TaskForm } from './TaskForm';
 import { toISODate } from '../../utils/dateUtils';
+import { getItem, setItem, KEYS } from '../../store/localStorage';
+import type { DailyPlan } from '../../types';
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 06:00 to 22:00
 
@@ -13,6 +15,8 @@ const PRIORITY_COLORS: Record<string, string> = {
   media: 'bg-amber-50 border-amber-200 text-amber-800',
   baja: 'bg-green-50 border-green-200 text-green-800',
 };
+
+const RESCHEDULED_COLOR = 'bg-orange-100 border-orange-400 text-orange-900';
 
 export function TimeBlocks() {
   const { state, addTask, updateTask, toggleTask, isReadOnly } = usePlanner();
@@ -31,10 +35,45 @@ export function TimeBlocks() {
   function handleDrop(e: React.DragEvent<HTMLDivElement>, hour: number) {
     e.preventDefault();
     setDragOverHour(null);
+    const hStr = String(hour).padStart(2, '0');
+
+    // Check if this is an overdue task from another day
+    const overdueRaw = e.dataTransfer.getData('application/x-overdue-task');
+    if (overdueRaw) {
+      try {
+        const { taskId, sourceDate } = JSON.parse(overdueRaw) as { taskId: string; sourceDate: string };
+        const sourcePlan = getItem<DailyPlan>(KEYS.daily(sourceDate));
+        if (!sourcePlan) return;
+        const sourceTask = sourcePlan.tasks.find(t => t.id === taskId);
+        if (!sourceTask) return;
+
+        // Mark original as reprogramada in source day
+        const updatedSource: DailyPlan = {
+          ...sourcePlan,
+          tasks: sourcePlan.tasks.map(t =>
+            t.id === taskId ? { ...t, status: 'reprogramada' as const, updatedAt: new Date().toISOString() } : t
+          ),
+        };
+        setItem(KEYS.daily(sourceDate), updatedSource);
+
+        // Add to today's plan with startTime + rescheduledFrom marker
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id: _id, createdAt: _ca, updatedAt: _ua, ...taskRest } = sourceTask;
+        addTask({
+          ...taskRest,
+          dueDate: dateStr,
+          startTime: `${hStr}:00`,
+          rescheduledFrom: sourceDate,
+          status: 'pendiente',
+        });
+      } catch { /* ignore parse errors */ }
+      return;
+    }
+
+    // Regular same-day task drag
     const taskId = e.dataTransfer.getData('text/plain');
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    const hStr = String(hour).padStart(2, '0');
     updateTask({ ...task, startTime: `${hStr}:00`, updatedAt: new Date().toISOString() });
   }
 
@@ -90,11 +129,12 @@ export function TimeBlocks() {
                     onClick={() => !isReadOnly && toggleTask(task.id)}
                     className={clsx(
                       'text-xs px-2 py-0.5 rounded border font-medium transition-opacity max-w-full truncate',
-                      PRIORITY_COLORS[task.priority],
+                      task.rescheduledFrom ? RESCHEDULED_COLOR : PRIORITY_COLORS[task.priority],
                       task.status === 'completada' && 'opacity-50 line-through'
                     )}
-                    title={task.title}
+                    title={task.rescheduledFrom ? `↩ Reprogramada desde ${task.rescheduledFrom} — ${task.title}` : task.title}
                   >
+                    {task.rescheduledFrom && <span className="mr-1 opacity-70">↩</span>}
                     {task.startTime} — {task.title}
                   </button>
                 ))}

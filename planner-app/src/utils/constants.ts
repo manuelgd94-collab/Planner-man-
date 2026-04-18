@@ -25,6 +25,7 @@ export const ESTADO_LABELS: Record<TaskStatus, string> = {
   en_progreso: 'En progreso',
   completada: 'Completada',
   cancelada: 'Cancelada',
+  reprogramada: 'Reprogramada',
 };
 
 export const ESTADO_OBJETIVO_LABELS: Record<GoalStatus, string> = {

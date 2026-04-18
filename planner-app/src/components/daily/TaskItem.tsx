@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pencil, Trash2, Clock } from 'lucide-react';
+import { Pencil, Trash2, Clock, MoveRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { Task } from '../../types';
 import { Modal } from '../ui/Modal';
@@ -37,8 +37,8 @@ export function TaskItem({ task, onToggle, onUpdate, onDelete }: TaskItemProps) 
   const [editing, setEditing] = useState(false);
   const { isReadOnly } = usePlanner();
   const isCompleted = task.status === 'completada';
+  const isRescheduled = task.status === 'reprogramada';
   const todayISO = toISODate(new Date());
-  // Task completed on a different day than its due date
   const isLateCompletion = isCompleted && task.dueDate < todayISO;
 
   return (
@@ -51,7 +51,8 @@ export function TaskItem({ task, onToggle, onUpdate, onDelete }: TaskItemProps) 
         }}
         className={clsx(
           'group flex items-start gap-2 px-2.5 py-1.5 rounded-lg transition-colors hover:bg-surface-secondary',
-          !isReadOnly && 'cursor-grab active:cursor-grabbing'
+          !isReadOnly && 'cursor-grab active:cursor-grabbing',
+          isRescheduled && 'opacity-50'
         )}
       >
         <button
@@ -74,11 +75,16 @@ export function TaskItem({ task, onToggle, onUpdate, onDelete }: TaskItemProps) 
         <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1', PRIORITY_DOT[task.priority])} />
 
         <div className="flex-1 min-w-0">
-          <p className={clsx('text-xs font-medium leading-snug', isCompleted ? 'line-through text-text-muted' : 'text-text-primary')}>
+          <p className={clsx('text-xs font-medium leading-snug', isCompleted || isRescheduled ? 'line-through text-text-muted' : 'text-text-primary')}>
             {task.title}
             {isLateCompletion && (
               <span className="ml-1.5 inline-flex items-center gap-0.5 text-[9px] px-1 py-0 rounded bg-amber-100 text-amber-700 font-semibold align-middle">
                 <Clock size={8} /> atrasada
+              </span>
+            )}
+            {isRescheduled && (
+              <span className="ml-1.5 inline-flex items-center gap-0.5 text-[9px] px-1 py-0 rounded bg-orange-100 text-orange-700 font-semibold align-middle">
+                <MoveRight size={8} /> reprogramada
               </span>
             )}
           </p>
