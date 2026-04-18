@@ -59,8 +59,8 @@ export function parseISOUtil(s: string): Date {
 }
 
 export function getWeekDays(date: Date): Date[] {
-  const start = startOfWeek(date, { weekStartsOn: 1 });
-  const end = endOfWeek(date, { weekStartsOn: 1 });
+  const start = startOfWeek(date, { weekStartsOn: 4 }); // Week: Thu–Wed
+  const end = endOfWeek(date, { weekStartsOn: 4 });
   return eachDayOfInterval({ start, end });
 }
 

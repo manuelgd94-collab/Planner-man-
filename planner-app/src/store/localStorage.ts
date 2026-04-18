@@ -6,6 +6,7 @@ export const KEYS = {
   settings: `${PREFIX}:settings`,
   recurringTemplates: `${PREFIX}:recurring-templates`,
   daily: (date: string) => `${PREFIX}:daily:${date}`,
+  weekly: (weekStart: string) => `${PREFIX}:weekly:${weekStart}`,
   monthly: (yearMonth: string) => `${PREFIX}:monthly:${yearMonth}`,
   annual: (year: number) => `${PREFIX}:annual:${year}`,
   meta: 'planner:meta:schemaVersion',

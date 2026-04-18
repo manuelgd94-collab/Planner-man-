@@ -265,18 +265,6 @@ function weekToStorage(week: ParsedWeek): Record<string, unknown> {
       createdAt: nowISO(), updatedAt: nowISO(),
     }));
 
-    // Pendientes + Emergencias on first day
-    if (i === 0) {
-      week.pendientes.forEach(txt => tasks.push({
-        id: newId(), title: txt, priority: 'media', status: 'pendiente',
-        dueDate: day.fecha, tags: [], createdAt: nowISO(), updatedAt: nowISO(),
-      }));
-      week.emergencias.forEach(txt => tasks.push({
-        id: newId(), title: txt, priority: 'alta', status: 'pendiente',
-        dueDate: day.fecha, tags: [], createdAt: nowISO(), updatedAt: nowISO(),
-      }));
-    }
-
     const dailyPlan: Record<string, unknown> = {
       date: day.fecha, tasks, habitEntries: [],
     };
@@ -295,7 +283,16 @@ function weekToStorage(week: ParsedWeek): Record<string, unknown> {
     out[key] = dailyPlan;
   });
 
-  // Monthly goals
+  // Weekly plan: objetivos semanales, pendientes y emergencias → WeeklyPlan note boxes
+  const wKey = `${SCHEMA}:weekly:${week.fechaInicio}`;
+  out[wKey] = {
+    weekStart: week.fechaInicio,
+    objetivo: week.objetivos.join('\n'),
+    pendientes: week.pendientes.join('\n'),
+    emergencias: week.emergencias.join('\n'),
+  };
+
+  // Monthly goals (from objetivos section)
   if (week.objetivos.length > 0) {
     const mKey = `${SCHEMA}:monthly:${yearMonth}`;
     const [year, month] = yearMonth.split('-').map(Number);
