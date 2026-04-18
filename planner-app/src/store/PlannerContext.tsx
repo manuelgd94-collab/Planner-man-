@@ -139,23 +139,31 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, habits: state.habits.filter(h => h.id !== action.habitId) };
 
     case 'TOGGLE_HABIT_ENTRY': {
-      const existing = state.habitEntries.find(e => e.habitId === action.habitId && e.date === action.date);
-      let entries: HabitEntry[];
-      if (existing) {
-        entries = state.habitEntries.map(e =>
-          e.habitId === action.habitId && e.date === action.date
-            ? { ...e, completed: !e.completed }
-            : e
-        );
-      } else {
-        entries = [...state.habitEntries, {
-          id: crypto.randomUUID(),
-          habitId: action.habitId,
-          date: action.date,
-          completed: true,
-        }];
+      const { habitId, date } = action;
+      const existing = state.habitEntries.find(e => e.habitId === habitId && e.date === date);
+      const newEntry: HabitEntry = existing
+        ? { ...existing, completed: !existing.completed }
+        : { id: crypto.randomUUID(), habitId, date, completed: true };
+
+      const entries = existing
+        ? state.habitEntries.map(e => (e.habitId === habitId && e.date === date) ? newEntry : e)
+        : [...state.habitEntries, newEntry];
+
+      // Also sync into dailyPlan when the toggled date matches the currently loaded day
+      // so the dailyPlan persist effect saves the entry to localStorage
+      let dailyPlan = state.dailyPlan;
+      if (dailyPlan?.date === date) {
+        const planEntries = dailyPlan.habitEntries ?? [];
+        const planExisting = planEntries.find(e => e.habitId === habitId);
+        dailyPlan = {
+          ...dailyPlan,
+          habitEntries: planExisting
+            ? planEntries.map(e => e.habitId === habitId ? newEntry : e)
+            : [...planEntries, newEntry],
+        };
       }
-      return { ...state, habitEntries: entries };
+
+      return { ...state, habitEntries: entries, dailyPlan };
     }
 
     case 'ADD_GOAL': {
@@ -444,6 +452,19 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   const toggleHabitEntry = useCallback((habitId: string, date: string) => {
     const habit = stateRef.current.habits.find(h => h.id === habitId);
     dispatch({ type: 'TOGGLE_HABIT_ENTRY', habitId, date });
+    // Directly persist to the daily plan for that date.
+    // For today, the reducer also updates dailyPlan so the persist effect fires.
+    // For past dates, dailyPlan.date !== date so we must write to storage here.
+    const key = KEYS.daily(date);
+    const plan = getItem<DailyPlan>(key) ?? { date, tasks: [], habitEntries: [] };
+    const planEntries: HabitEntry[] = plan.habitEntries ?? [];
+    const planExisting = planEntries.find(e => e.habitId === habitId);
+    setItem(key, {
+      ...plan,
+      habitEntries: planExisting
+        ? planEntries.map(e => e.habitId === habitId ? { ...e, completed: !e.completed } : e)
+        : [...planEntries, { id: crypto.randomUUID(), habitId, date, completed: true }],
+    });
     addHistoryEntry({ action: 'Hábito registrado', detail: `${habit?.name ?? habitId} — ${date}`, category: 'habito' });
   }, []);
 

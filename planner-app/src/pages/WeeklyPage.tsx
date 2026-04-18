@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Clock, AlertCircle } from 'lucide-react';
 import { usePlanner } from '../store/PlannerContext';
-import { getWeekDays, toISODate, formatDate, capitalizeFirst, subDaysUtil } from '../utils/dateUtils';
+import { getWeekDays, toISODate, formatDate, capitalizeFirst } from '../utils/dateUtils';
 import { getItem, setItem, KEYS } from '../store/localStorage';
 import type { DailyPlan, WeeklyPlan } from '../types';
 import { WeekDayColumn } from '../components/weekly/WeekDayColumn';
@@ -31,12 +31,13 @@ export function WeeklyPage() {
     setItem(KEYS.weekly(weekStart), updated);
   }
 
+  // Show only past days within this week that have pending/in-progress tasks
   const overdueTasks = useMemo(() => {
+    const todayISO = toISODate(new Date());
     const groups: { date: string; label: string; tasks: { id: string; title: string; priority: string }[] }[] = [];
-    for (let i = 1; i <= 45; i++) {
-      const d = subDaysUtil(new Date(), i);
-      const iso = toISODate(d);
-      if (iso >= weekStart) continue;
+    for (const day of weekDays) {
+      const iso = toISODate(day);
+      if (iso >= todayISO) continue; // only days already passed
       const plan = getItem<DailyPlan>(KEYS.daily(iso));
       const pending = (plan?.tasks ?? []).filter(t => t.status === 'pendiente' || t.status === 'en_progreso');
       if (pending.length > 0) {
@@ -45,11 +46,10 @@ export function WeeklyPage() {
           label: capitalizeFirst(formatDate(new Date(iso + 'T12:00:00'), 'EEEE d MMM')),
           tasks: pending.map(t => ({ id: t.id, title: t.title, priority: t.priority })),
         });
-        if (groups.length >= 15) break;
       }
     }
     return groups;
-  }, [weekStart]);
+  }, [weekDays]);
 
   const weekLabel = useMemo(() => {
     const first = weekDays[0];
