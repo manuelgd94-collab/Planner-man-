@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
-import { Flame } from 'lucide-react';
+import { Flame, AlertTriangle, ArrowLeftRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import { usePlanner } from '../store/PlannerContext';
 import { getItem, KEYS } from '../store/localStorage';
 import { subDaysUtil, toISODate, formatDate, capitalizeFirst, getWeekDays } from '../utils/dateUtils';
-import type { DailyPlan } from '../types';
+import type { DailyPlan, WeeklyPlan } from '../types';
 
 function getLast(n: number): Date[] {
   const days: Date[] = [];
@@ -84,6 +84,122 @@ function WeeklyCompletionChart() {
         <LegendDot color="bg-amber-400" label="50–79%" />
         <LegendDot color="bg-red-400" label="< 50%" />
         <LegendDot color="bg-gray-100 border border-gray-200" label="Sin tareas" />
+      </div>
+    </div>
+  );
+}
+
+function getLastWeekStarts(n: number): Date[] {
+  const today = new Date();
+  const currentWeekDays = getWeekDays(today);
+  const currentThursday = currentWeekDays[0];
+  return Array.from({ length: n }, (_, i) => subDaysUtil(currentThursday, (n - 1 - i) * 7));
+}
+
+function EmergencyFrequencyChart() {
+  const weekStats = useMemo(() => {
+    return getLastWeekStarts(8).map(weekStart => {
+      const plan = getItem<WeeklyPlan>(KEYS.weekly(toISODate(weekStart)));
+      const count = plan?.emergencias?.length ?? 0;
+      return { weekStart, count };
+    });
+  }, []);
+
+  const maxBar = Math.max(...weekStats.map(s => s.count), 1);
+
+  return (
+    <div className="bg-white border border-border rounded-xl p-5">
+      <h3 className="text-sm font-semibold text-text-primary mb-1 flex items-center gap-2">
+        <AlertTriangle size={14} className="text-red-500" />
+        Frecuencia de emergencias — últimas 8 semanas
+      </h3>
+      <p className="text-xs text-text-muted mb-4">Cantidad de emergencias registradas por semana</p>
+      <div className="flex items-end gap-1.5" style={{ height: 80 }}>
+        {weekStats.map(({ weekStart, count }, i) => (
+          <div key={i} className="flex-1 flex flex-col items-center justify-end group relative" style={{ height: 80 }}>
+            <div
+              className="w-full rounded-t bg-red-400 transition-all duration-300"
+              style={{ height: count === 0 ? 3 : `${Math.max(8, (count / maxBar) * 80)}%`, opacity: count === 0 ? 0.2 : 1 }}
+            />
+            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+              <div className="bg-gray-900 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap">
+                Sem {formatDate(weekStart, 'd/M')}: {count} emergencia{count !== 1 ? 's' : ''}
+              </div>
+              <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex mt-1.5">
+        {weekStats.map(({ weekStart }, i) => (
+          <div key={i} className="flex-1 flex justify-center">
+            <span className="text-[9px] text-text-muted">{formatDate(weekStart, 'd/M')}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CarryOverChart() {
+  const weekStats = useMemo(() => {
+    return getLastWeekStarts(8).map(weekStart => {
+      const plan = getItem<WeeklyPlan>(KEYS.weekly(toISODate(weekStart)));
+      const pendientes = plan?.pendientes ?? [];
+      const total = pendientes.length;
+      const carriedOver = pendientes.filter(p => p.carriedOver).length;
+      const uncompleted = pendientes.filter(p => !p.completed).length;
+      return { weekStart, total, carriedOver, uncompleted };
+    });
+  }, []);
+
+  const maxBar = Math.max(...weekStats.map(s => s.total), 1);
+  const avgCarryOver = weekStats.filter(w => w.total > 0).length > 0
+    ? (weekStats.reduce((s, w) => s + w.carriedOver, 0) / weekStats.filter(w => w.total > 0).length).toFixed(1)
+    : '0';
+
+  return (
+    <div className="bg-white border border-border rounded-xl p-5">
+      <h3 className="text-sm font-semibold text-text-primary mb-1 flex items-center gap-2">
+        <ArrowLeftRight size={14} className="text-blue-500" />
+        Tasa de carry-over — últimas 8 semanas
+      </h3>
+      <p className="text-xs text-text-muted mb-4">
+        Pendientes arrastrados de semana anterior · promedio: {avgCarryOver} por semana
+      </p>
+      <div className="flex items-end gap-1.5" style={{ height: 80 }}>
+        {weekStats.map(({ weekStart, total, carriedOver }, i) => (
+          <div key={i} className="flex-1 flex flex-col items-center justify-end group relative" style={{ height: 80 }}>
+            <div
+              className="w-full rounded-t bg-gray-100 relative overflow-hidden"
+              style={{ height: total === 0 ? 3 : `${Math.max(8, (total / maxBar) * 80)}%`, opacity: total === 0 ? 0.3 : 1 }}
+            >
+              {total > 0 && (
+                <div
+                  className="absolute bottom-0 left-0 right-0 bg-blue-400"
+                  style={{ height: `${Math.round((carriedOver / total) * 100)}%` }}
+                />
+              )}
+            </div>
+            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+              <div className="bg-gray-900 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap">
+                Sem {formatDate(weekStart, 'd/M')}: {carriedOver}/{total} arrastrados
+              </div>
+              <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex mt-1.5">
+        {weekStats.map(({ weekStart }, i) => (
+          <div key={i} className="flex-1 flex justify-center">
+            <span className="text-[9px] text-text-muted">{formatDate(weekStart, 'd/M')}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-4 mt-3">
+        <LegendDot color="bg-blue-400" label="Arrastrados" />
+        <LegendDot color="bg-gray-100 border border-gray-200" label="Nuevos" />
       </div>
     </div>
   );
@@ -296,6 +412,8 @@ export function StatsPage() {
 
         {/* Weekly completion % chart — last 8 weeks */}
         <WeeklyCompletionChart />
+        <EmergencyFrequencyChart />
+        <CarryOverChart />
 
         {/* Day-by-day detail */}
         <div className="bg-white border border-border rounded-xl p-5">

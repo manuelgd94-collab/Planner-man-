@@ -1,13 +1,36 @@
+import { useState } from 'react';
+import { ClipboardList } from 'lucide-react';
 import { TaskList } from '../components/daily/TaskList';
 import { HabitTracker } from '../components/daily/HabitTracker';
 import { DailyNotes } from '../components/daily/DailyNotes';
 import { MoodTracker } from '../components/daily/MoodTracker';
 import { TimeBlocks } from '../components/daily/TimeBlocks';
+import { ShiftSummary } from '../components/daily/ShiftSummary';
+import { usePlanner } from '../store/PlannerContext';
+import { toISODate, formatDate, capitalizeFirst } from '../utils/dateUtils';
 
 export function DailyPage() {
+  const { state } = usePlanner();
+  const [showSummary, setShowSummary] = useState(false);
+  const dateStr = toISODate(state.selectedDate);
+  const dateLabel = capitalizeFirst(formatDate(state.selectedDate, "EEEE d 'de' MMMM"));
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-6xl mx-auto p-6 space-y-6">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-text-secondary">{dateLabel}</p>
+          <button
+            onClick={() => setShowSummary(true)}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition-colors"
+          >
+            <ClipboardList size={13} />
+            Resumen de turno
+          </button>
+        </div>
+
         {/* Mood */}
         <div className="bg-white border border-border rounded-xl p-4">
           <MoodTracker />
@@ -15,17 +38,12 @@ export function DailyPage() {
 
         {/* Main grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Tasks */}
           <div className="lg:col-span-1 bg-white border border-border rounded-xl p-4">
             <TaskList />
           </div>
-
-          {/* Habits */}
           <div className="lg:col-span-1 bg-white border border-border rounded-xl p-4">
             <HabitTracker />
           </div>
-
-          {/* Notes */}
           <div className="lg:col-span-1 bg-white border border-border rounded-xl p-4">
             <DailyNotes />
           </div>
@@ -36,6 +54,12 @@ export function DailyPage() {
           <TimeBlocks />
         </div>
       </div>
+
+      <ShiftSummary
+        open={showSummary}
+        onClose={() => setShowSummary(false)}
+        date={dateStr}
+      />
     </div>
   );
 }

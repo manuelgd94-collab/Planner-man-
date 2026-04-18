@@ -103,6 +103,11 @@ export interface WeeklyPlan {
   goals: Goal[];               // weekly objectives with progress tracking
   pendientes: WeeklyItem[];    // obligations that carry over if unfinished
   emergencias: WeeklyItem[];   // urgent issues that arise during the shift
+  retrospectiva?: {
+    logros: string;
+    mejoras: string;
+    aprendizajes: string;
+  };
 }
 
 export interface DailyPlan {
@@ -113,10 +118,20 @@ export interface DailyPlan {
   mood?: 1 | 2 | 3 | 4 | 5;
 }
 
+export type MilestoneType = 'entrega' | 'inspeccion' | 'reunion' | 'cierre' | 'otro';
+
+export interface Milestone {
+  id: string;
+  date: string;
+  title: string;
+  type: MilestoneType;
+}
+
 export interface MonthlyPlan {
   yearMonth: string;
   goals: Goal[];
   note?: Note;
+  milestones?: Milestone[];
 }
 
 export interface AnnualPlan {

@@ -44,9 +44,19 @@ export function WeekDayColumn({ date, plan, onSelectDay }: WeekDayColumnProps) {
           {date.getDate()}
         </p>
         {tasks.length > 0 && (
-          <p className="text-[10px] text-text-muted mt-0.5">
-            {completedCount}/{tasks.length} tareas
-          </p>
+          <>
+            <p className="text-[10px] text-text-muted mt-0.5">{completedCount}/{tasks.length} tareas</p>
+            <div className="mt-1 h-1 w-full rounded-full bg-gray-100 overflow-hidden">
+              <div
+                className={clsx('h-full rounded-full transition-all',
+                  completedCount === tasks.length ? 'bg-green-500'
+                  : completedCount / tasks.length > 0.5 ? 'bg-amber-400'
+                  : 'bg-red-400'
+                )}
+                style={{ width: `${Math.round((completedCount / tasks.length) * 100)}%` }}
+              />
+            </div>
+          </>
         )}
       </button>
 

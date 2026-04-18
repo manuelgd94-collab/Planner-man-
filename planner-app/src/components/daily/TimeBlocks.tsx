@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { clsx } from 'clsx';
-import { Plus } from 'lucide-react';
+import { Plus, GripVertical } from 'lucide-react';
 import { usePlanner } from '../../store/PlannerContext';
 import { Modal } from '../ui/Modal';
 import { TaskForm } from './TaskForm';
@@ -15,15 +15,27 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 export function TimeBlocks() {
-  const { state, addTask, toggleTask, isReadOnly } = usePlanner();
+  const { state, addTask, updateTask, toggleTask, isReadOnly } = usePlanner();
   const [addingAt, setAddingAt] = useState<string | null>(null);
+  const [dragOverHour, setDragOverHour] = useState<number | null>(null);
   const dateStr = toISODate(state.selectedDate);
   const tasks = state.dailyPlan?.tasks ?? [];
   const tasksWithTime = tasks.filter(t => t.startTime);
+  const tasksWithoutTime = tasks.filter(t => !t.startTime && t.status !== 'completada');
 
   function getTasksForHour(hour: number) {
     const h = String(hour).padStart(2, '0');
     return tasksWithTime.filter(t => t.startTime?.startsWith(h));
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>, hour: number) {
+    e.preventDefault();
+    setDragOverHour(null);
+    const taskId = e.dataTransfer.getData('text/plain');
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const hStr = String(hour).padStart(2, '0');
+    updateTask({ ...task, startTime: `${hStr}:00`, updatedAt: new Date().toISOString() });
   }
 
   const now = new Date();
@@ -33,31 +45,45 @@ export function TimeBlocks() {
     <div>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Bloques de tiempo</span>
+        {tasksWithoutTime.length > 0 && (
+          <span className="flex items-center gap-1 text-[11px] text-text-muted italic">
+            <GripVertical size={12} />
+            Arrastra tareas al horario para programarlas
+          </span>
+        )}
       </div>
 
       <div className="relative space-y-0">
         {HOURS.map(hour => {
           const hourTasks = getTasksForHour(hour);
           const isCurrentHour = hour === currentHour;
+          const isDragOver = dragOverHour === hour;
           const hStr = String(hour).padStart(2, '0');
 
           return (
             <div
               key={hour}
+              onDragOver={e => { e.preventDefault(); setDragOverHour(hour); }}
+              onDragLeave={() => setDragOverHour(null)}
+              onDrop={e => handleDrop(e, hour)}
               className={clsx(
-                'flex gap-2 min-h-[40px] group border-t border-border/50',
-                isCurrentHour && 'bg-blue-50/40'
+                'flex gap-2 min-h-[40px] group border-t border-border/50 transition-colors',
+                isCurrentHour && 'bg-blue-50/40',
+                isDragOver && 'bg-blue-100 ring-1 ring-inset ring-blue-400'
               )}
             >
               {/* Hour label */}
               <div className="w-12 flex-shrink-0 pt-1.5">
-                <span className={clsx('text-xs font-medium', isCurrentHour ? 'text-blue-600' : 'text-text-muted')}>
+                <span className={clsx('text-xs font-medium', isCurrentHour ? 'text-blue-600' : isDragOver ? 'text-blue-700 font-bold' : 'text-text-muted')}>
                   {hStr}:00
                 </span>
               </div>
 
               {/* Tasks in this slot */}
               <div className="flex-1 py-1 flex flex-wrap gap-1 items-start min-h-[32px]">
+                {isDragOver && hourTasks.length === 0 && (
+                  <span className="text-[11px] text-blue-500 italic py-0.5">Soltar aquí</span>
+                )}
                 {hourTasks.map(task => (
                   <button
                     key={task.id}
@@ -73,7 +99,6 @@ export function TimeBlocks() {
                   </button>
                 ))}
 
-                {/* Add button on hover */}
                 {!isReadOnly && (
                   <button
                     onClick={() => setAddingAt(`${hStr}:00`)}
@@ -89,7 +114,6 @@ export function TimeBlocks() {
         })}
       </div>
 
-      {/* Current time indicator */}
       <CurrentTimeIndicator />
 
       <Modal open={!!addingAt} onClose={() => setAddingAt(null)} title={`Nueva tarea — ${addingAt}`}>
@@ -110,8 +134,7 @@ function CurrentTimeIndicator() {
   const minutes = now.getMinutes();
   if (hours < 6 || hours > 22) return null;
 
-  // Each hour row is ~40px, starting from hour 6
-  const topPx = (hours - 6) * 40 + (minutes / 60) * 40 + 8; // +8 for header offset
+  const topPx = (hours - 6) * 40 + (minutes / 60) * 40 + 8;
 
   return (
     <div

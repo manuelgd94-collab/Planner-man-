@@ -249,6 +249,20 @@ function parseSheet(ws: XLSX.WorkSheet, sheetName: string): ParsedWeek | string 
 function newId()    { return crypto.randomUUID(); }
 function nowISO()   { return new Date().toISOString(); }
 
+function extractTime(text: string): { time: string | undefined; title: string } {
+  const m = text.match(/^(\d{1,2}:\d{2})\s*[-–]?\s*(.+)$/);
+  if (m) {
+    const parts = m[1].split(':');
+    const hh = parts[0].padStart(2, '0');
+    return { time: `${hh}:${parts[1]}`, title: m[2].trim() };
+  }
+  return { time: undefined, title: text };
+}
+
+function toWeeklyItem(title: string) {
+  return { id: newId(), title, completed: false, createdAt: nowISO() };
+}
+
 function weekToStorage(week: ParsedWeek): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const yearMonth = week.fechaInicio.slice(0, 7);
@@ -257,13 +271,17 @@ function weekToStorage(week: ParsedWeek): Record<string, unknown> {
   week.dias.forEach((day, i) => {
     const key = `${SCHEMA}:daily:${day.fecha}`;
 
-    type TaskRec = { id: string; title: string; priority: 'alta'|'media'|'baja'; status: string; dueDate: string; tags: string[]; createdAt: string; updatedAt: string; completedAt?: string };
-    const tasks: TaskRec[] = day.tareas.map(t => ({
-      id: newId(), title: t.texto, priority: 'media' as const,
-      status: t.status, dueDate: day.fecha, tags: [],
-      ...(t.status === 'completada' ? { completedAt: nowISO() } : {}),
-      createdAt: nowISO(), updatedAt: nowISO(),
-    }));
+    type TaskRec = { id: string; title: string; priority: 'alta'|'media'|'baja'; status: string; dueDate: string; tags: string[]; startTime?: string; createdAt: string; updatedAt: string; completedAt?: string };
+    const tasks: TaskRec[] = day.tareas.map(t => {
+      const { time, title } = extractTime(t.texto);
+      return {
+        id: newId(), title, priority: 'media' as const,
+        status: t.status, dueDate: day.fecha, tags: [],
+        ...(time ? { startTime: time } : {}),
+        ...(t.status === 'completada' ? { completedAt: nowISO() } : {}),
+        createdAt: nowISO(), updatedAt: nowISO(),
+      };
+    });
 
     const dailyPlan: Record<string, unknown> = {
       date: day.fecha, tasks, habitEntries: [],
@@ -283,13 +301,13 @@ function weekToStorage(week: ParsedWeek): Record<string, unknown> {
     out[key] = dailyPlan;
   });
 
-  // Weekly plan: objetivos semanales, pendientes y emergencias → WeeklyPlan note boxes
+  // Weekly plan: objetivos → goals, pendientes + emergencias → WeeklyItem[]
   const wKey = `${SCHEMA}:weekly:${week.fechaInicio}`;
   out[wKey] = {
     weekStart: week.fechaInicio,
-    objetivo: week.objetivos.join('\n'),
-    pendientes: week.pendientes.join('\n'),
-    emergencias: week.emergencias.join('\n'),
+    goals: [],
+    pendientes: week.pendientes.map(toWeeklyItem),
+    emergencias: week.emergencias.map(toWeeklyItem),
   };
 
   // Monthly goals (from objetivos section)

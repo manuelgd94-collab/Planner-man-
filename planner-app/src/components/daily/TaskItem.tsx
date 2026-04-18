@@ -39,7 +39,17 @@ export function TaskItem({ task, onToggle, onUpdate, onDelete }: TaskItemProps) 
 
   return (
     <>
-      <div className={clsx('group flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-surface-secondary')}>
+      <div
+        draggable={!isReadOnly}
+        onDragStart={e => {
+          e.dataTransfer.setData('text/plain', task.id);
+          e.dataTransfer.effectAllowed = 'move';
+        }}
+        className={clsx(
+          'group flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-surface-secondary',
+          !isReadOnly && 'cursor-grab active:cursor-grabbing'
+        )}
+      >
         <button
           onClick={isReadOnly ? undefined : onToggle}
           disabled={isReadOnly}

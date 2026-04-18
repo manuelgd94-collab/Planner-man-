@@ -172,6 +172,33 @@ export function WeeklyPage() {
           ))}
         </div>
 
+        {/* Retrospectiva */}
+        <div className="border border-teal-300 rounded-xl bg-white overflow-hidden">
+          <div className="px-4 py-2.5 bg-teal-700 text-white text-xs font-bold uppercase tracking-wide text-center">
+            Retrospectiva de la semana
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-border p-0">
+            {(['logros', 'mejoras', 'aprendizajes'] as const).map((field) => {
+              const labels = { logros: '¿Qué funcionó bien?', mejoras: '¿Qué mejorar?', aprendizajes: '¿Qué aprendí?' };
+              return (
+                <div key={field} className="p-3 flex flex-col gap-1">
+                  <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wide">{labels[field]}</label>
+                  <textarea
+                    className="flex-1 text-xs text-text-primary resize-none focus:outline-none bg-transparent leading-relaxed min-h-[70px] placeholder:text-text-muted"
+                    value={weeklyPlan.retrospectiva?.[field] ?? ''}
+                    onChange={e => persist({
+                      ...weeklyPlan,
+                      retrospectiva: { logros: '', mejoras: '', aprendizajes: '', ...weeklyPlan.retrospectiva, [field]: e.target.value }
+                    })}
+                    readOnly={isReadOnly}
+                    placeholder={isReadOnly ? '' : 'Escribe aquí...'}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Overdue tasks (past days of this week only) */}
         {totalOverdue > 0 && (
           <div className="border border-amber-300 rounded-xl bg-white overflow-hidden">

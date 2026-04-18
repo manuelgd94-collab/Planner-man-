@@ -1,9 +1,13 @@
 import { CalendarGrid } from '../components/monthly/CalendarGrid';
 import { MonthlyGoals } from '../components/monthly/MonthlyGoals';
+import { MilestoneList } from '../components/monthly/MilestoneList';
 import { usePlanner } from '../store/PlannerContext';
-import { formatDate, capitalizeFirst } from '../utils/dateUtils';
+import { formatDate, capitalizeFirst, toYearMonth } from '../utils/dateUtils';
 
 export function MonthlyPage() {
+  const { state, isReadOnly } = usePlanner();
+  const yearMonth = toYearMonth(state.selectedDate);
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-6xl mx-auto p-6">
@@ -16,9 +20,14 @@ export function MonthlyPage() {
             </div>
           </div>
 
-          {/* Goals sidebar */}
-          <div className="bg-white border border-border rounded-xl p-4">
-            <MonthlyGoals />
+          {/* Sidebar */}
+          <div className="space-y-4">
+            <div className="bg-white border border-border rounded-xl p-4">
+              <MilestoneList yearMonth={yearMonth} readOnly={isReadOnly} />
+            </div>
+            <div className="bg-white border border-border rounded-xl p-4">
+              <MonthlyGoals />
+            </div>
           </div>
         </div>
       </div>

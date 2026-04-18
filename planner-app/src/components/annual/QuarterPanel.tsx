@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import type { Quarter } from '../../types';
 import { TRIMESTRES } from '../../utils/constants';
@@ -7,6 +7,7 @@ import { GoalForm } from '../monthly/GoalForm';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { usePlanner } from '../../store/PlannerContext';
+import { getItem, setItem, KEYS } from '../../store/localStorage';
 
 interface QuarterPanelProps {
   quarter: Quarter;
@@ -16,7 +17,13 @@ interface QuarterPanelProps {
 export function QuarterPanel({ quarter, year }: QuarterPanelProps) {
   const { state, addGoal, isReadOnly } = usePlanner();
   const [showForm, setShowForm] = useState(false);
+  const [review, setReview] = useState('');
+  const reviewKey = KEYS.quarterReview(year, quarter);
   const trimestre = TRIMESTRES[quarter];
+
+  useEffect(() => {
+    setReview(getItem<string>(reviewKey) ?? '');
+  }, [reviewKey]);
 
   const goals = (state.annualPlan?.goals ?? []).filter(g => g.quarter === quarter);
   const completed = goals.filter(g => g.status === 'completada').length;
@@ -53,6 +60,21 @@ export function QuarterPanel({ quarter, year }: QuarterPanelProps) {
           ))}
         </div>
       )}
+
+      {/* Quarterly review notes */}
+      <div className="mt-3 pt-3 border-t border-border">
+        <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wide block mb-1">
+          Notas de revisión trimestral
+        </label>
+        <textarea
+          value={review}
+          onChange={e => setReview(e.target.value)}
+          onBlur={() => setItem(reviewKey, review)}
+          readOnly={isReadOnly}
+          placeholder={isReadOnly ? '' : 'Logros, aprendizajes, ajustes para el próximo trimestre...'}
+          className="w-full text-xs text-text-primary border border-border rounded-lg px-2 py-1.5 resize-none outline-none focus:border-gray-400 bg-white min-h-[60px] leading-relaxed placeholder:text-text-muted"
+        />
+      </div>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={`Nuevo objetivo — ${trimestre.label}`}>
         <GoalForm
