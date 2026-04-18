@@ -6,6 +6,15 @@ import { getItem, KEYS } from '../store/localStorage';
 import { subDaysUtil, toISODate, formatDate, capitalizeFirst, getWeekDays } from '../utils/dateUtils';
 import type { DailyPlan, WeeklyPlan } from '../types';
 
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
+      <span className={clsx('w-3 h-3 rounded-sm inline-block', color)} />
+      {label}
+    </span>
+  );
+}
+
 function getLast(n: number): Date[] {
   const days: Date[] = [];
   for (let i = n - 1; i >= 0; i--) days.push(subDaysUtil(new Date(), i));
@@ -205,6 +214,96 @@ function CarryOverChart() {
   );
 }
 
+function PlannedVsRescheduledChart() {
+  const dayStats = useMemo(() => {
+    return getLast(14).map(date => {
+      const iso = toISODate(date);
+      const plan = getItem<DailyPlan>(KEYS.daily(iso));
+      const tasks = plan?.tasks ?? [];
+      const planned    = tasks.filter(t => !t.rescheduledFrom);
+      const rescheduled = tasks.filter(t => !!t.rescheduledFrom);
+      const plannedDone    = planned.filter(t => t.status === 'completada').length;
+      const plannedTotal   = planned.length;
+      const rescheduledCount = rescheduled.length;
+      return { date, iso, plannedTotal, plannedDone, rescheduledCount };
+    });
+  }, []);
+
+  const maxBar = Math.max(...dayStats.map(s => s.plannedTotal + s.rescheduledCount), 1);
+  const daysWithData = dayStats.filter(d => d.plannedTotal > 0 || d.rescheduledCount > 0);
+  const avgRescheduled = daysWithData.length > 0
+    ? (daysWithData.reduce((s, d) => s + d.rescheduledCount, 0) / daysWithData.length).toFixed(1)
+    : '0';
+
+  return (
+    <div className="bg-white border border-border rounded-xl p-5">
+      <h3 className="text-sm font-semibold text-text-primary mb-1">
+        Planificadas vs Reprogramadas — últimos 14 días
+      </h3>
+      <p className="text-xs text-text-muted mb-4">
+        Respaldo del cumplimiento diario · promedio reprogramadas/día: {avgRescheduled}
+      </p>
+      <div className="flex items-end gap-1" style={{ height: 100 }}>
+        {dayStats.map(({ date, plannedTotal, plannedDone, rescheduledCount }, i) => {
+          const total = plannedTotal + rescheduledCount;
+          const barH = total === 0 ? 3 : Math.max(8, (total / maxBar) * 100);
+          const plannedFrac = total > 0 ? plannedTotal / total : 0;
+          const doneFrac = plannedTotal > 0 ? plannedDone / plannedTotal : 0;
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center justify-end group relative" style={{ height: 100 }}>
+              {total > 0 ? (
+                <div
+                  className="w-full rounded-t bg-gray-100 relative overflow-hidden"
+                  style={{ height: `${barH}%`, opacity: total === 0 ? 0.3 : 1 }}
+                >
+                  {/* Orange segment = rescheduled (bottom) */}
+                  {rescheduledCount > 0 && (
+                    <div
+                      className="absolute bottom-0 left-0 right-0 bg-orange-300"
+                      style={{ height: `${Math.round((1 - plannedFrac) * 100)}%` }}
+                    />
+                  )}
+                  {/* Green segment = planned done (above rescheduled) */}
+                  {plannedDone > 0 && (
+                    <div
+                      className="absolute left-0 right-0 bg-green-500"
+                      style={{
+                        bottom: `${Math.round((1 - plannedFrac) * 100)}%`,
+                        height: `${Math.round(plannedFrac * doneFrac * 100)}%`,
+                      }}
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="w-full rounded-t bg-gray-100" style={{ height: 3, opacity: 0.3 }} />
+              )}
+              <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                <div className="bg-gray-900 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap text-center">
+                  <div>{capitalizeFirst(formatDate(date, 'EEE d MMM'))}</div>
+                  <div>Plan: {plannedDone}/{plannedTotal} ✓ · Reprog: {rescheduledCount}</div>
+                </div>
+                <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex mt-1.5">
+        {dayStats.map(({ date }, i) => (
+          <div key={i} className="flex-1 flex justify-center">
+            {i % 7 === 0 && <span className="text-[9px] text-text-muted">{formatDate(date, 'd/M')}</span>}
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-4 mt-3">
+        <LegendDot color="bg-green-500" label="Planificadas completadas" />
+        <LegendDot color="bg-gray-100 border border-gray-200" label="Planificadas pendientes" />
+        <LegendDot color="bg-orange-300" label="Reprogramadas del día" />
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
     <div className="bg-white border border-border rounded-xl p-5">
@@ -212,15 +311,6 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
       <p className="text-3xl font-bold text-text-primary mt-2 leading-none">{value}</p>
       <p className="text-xs text-text-secondary mt-1.5">{sub}</p>
     </div>
-  );
-}
-
-function LegendDot({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
-      <span className={clsx('w-3 h-3 rounded-sm inline-block', color)} />
-      {label}
-    </span>
   );
 }
 
@@ -409,6 +499,9 @@ export function StatsPage() {
             </div>
           </div>
         )}
+
+        {/* Planned vs rescheduled daily breakdown */}
+        <PlannedVsRescheduledChart />
 
         {/* Weekly completion % chart — last 8 weeks */}
         <WeeklyCompletionChart />
