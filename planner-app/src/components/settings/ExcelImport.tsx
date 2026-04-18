@@ -60,58 +60,65 @@ function toISO(d: Date): string {
 
 // ── sheet parser ──────────────────────────────────────────────────────────────
 
-function parseSheet(ws: XLSX.WorkSheet): ParsedWeek | null {
+function parseSheet(ws: XLSX.WorkSheet, sheetName: string): ParsedWeek | null {
   // sheet_to_json with header:1 → 2D array (0-based row/col indices)
   const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: null });
   if (!rows.length) return null;
 
-  // Week number from first non-empty cell in row 0
+  // Week number: scan first 5 rows for "semana N", fallback to sheet name
   let weekNum = 0;
-  let title = '';
-  for (const cell of rows[0] ?? []) {
-    if (cell) { title = String(cell); break; }
+  for (let r = 0; r < Math.min(rows.length, 5) && !weekNum; r++) {
+    for (const cell of rows[r] ?? []) {
+      if (!cell) continue;
+      const m = String(cell).match(/semana\s+(\d+)/i);
+      if (m) { weekNum = parseInt(m[1]); break; }
+    }
   }
-  const wm = title.match(/semana\s+(\d+)/i);
-  if (!wm) return null;
-  weekNum = parseInt(wm[1]);
+  if (!weekNum) {
+    const m = sheetName.match(/semana\s+(\d+)/i);
+    if (m) weekNum = parseInt(m[1]);
+  }
+  if (!weekNum) return null;
 
-  // Start date from "Semana de: DD-MM-YYYY"
+  // Start date: scan all rows for any "DD-MM-YYYY" or "DD/MM/YYYY"
   let startDate: Date | null = null;
-  for (let r = 0; r < Math.min(rows.length, 10); r++) {
+  for (let r = 0; r < Math.min(rows.length, 15) && !startDate; r++) {
     for (const cell of rows[r] ?? []) {
       if (!cell) continue;
       const d = parseSpanishDate(String(cell));
       if (d) { startDate = d; break; }
     }
-    if (startDate) break;
   }
   if (!startDate) {
-    // Fallback: current year ISO week
+    // Fallback: compute Monday of ISO week weekNum
     const now = new Date();
     const jan4 = new Date(now.getFullYear(), 0, 4);
     startDate = new Date(jan4.getTime() + (weekNum - 1) * 7 * 86400000);
-    // Adjust to Monday
-    startDate.setDate(startDate.getDate() - startDate.getDay() + 1);
+    startDate.setDate(startDate.getDate() - ((startDate.getDay() + 6) % 7));
   }
 
   // Locate section header columns (Objetivos, Pendientes, Emergencias)
-  let objCol = 2; // default col C (0-based index 2)
-  let pendCol = -1, emergCol = -1;
-  for (let r = 2; r < Math.min(rows.length, 10); r++) {
+  // Search entire sheet up to row 20
+  let objCol = -1, pendCol = -1, emergCol = -1;
+  let sectionHeaderRow = -1;
+  for (let r = 0; r < Math.min(rows.length, 20); r++) {
+    let found = false;
     for (let c = 0; c < (rows[r]?.length ?? 0); c++) {
       const txt = cellStr(rows, r, c).toLowerCase();
-      if (txt.includes('objetivo')) objCol  = c;
-      if (txt.includes('pendiente')) pendCol = c;
-      if (txt.includes('emergencia')) emergCol = c;
+      if (txt.includes('objetivo') && objCol < 0)   { objCol = c; found = true; }
+      if (txt.includes('pendiente') && pendCol < 0)  { pendCol = c; found = true; }
+      if (txt.includes('emergencia') && emergCol < 0) { emergCol = c; found = true; }
     }
-    if (pendCol >= 0 && emergCol >= 0) break;
+    if (found && sectionHeaderRow < 0) sectionHeaderRow = r;
   }
+  if (objCol < 0) objCol = 2; // last resort default
 
-  // Extract the three objective sections (rows 7-14, 0-based)
+  // Extract the three sections (rows after section header, until day-header area)
   const objetivos: string[]   = [];
   const pendientes: string[]  = [];
   const emergencias: string[] = [];
-  for (let r = 7; r < Math.min(rows.length, 15); r++) {
+  const sectStart = sectionHeaderRow >= 0 ? sectionHeaderRow + 1 : 3;
+  for (let r = sectStart; r < Math.min(sectStart + 20, rows.length); r++) {
     const o = cellStr(rows, r, objCol);
     const p = pendCol  >= 0 ? cellStr(rows, r, pendCol)  : '';
     const e = emergCol >= 0 ? cellStr(rows, r, emergCol) : '';
@@ -121,13 +128,15 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedWeek | null {
   }
 
   // Find day-header row: the row with the most integer values in 1-31
+  // Search the whole sheet
   let dayRow = -1, bestCount = 0;
-  for (let r = 14; r < Math.min(rows.length, 30); r++) {
+  for (let r = 0; r < rows.length; r++) {
     let count = 0;
     for (const cell of rows[r] ?? []) {
-      if (typeof cell === 'number' && cell >= 1 && cell <= 31) count++;
-      else if (typeof cell === 'string' && /^\d{1,2}$/.test(cell.trim())) {
-        const n = parseInt(cell);
+      if (cell === null || cell === undefined) continue;
+      if (typeof cell === 'number' && Number.isInteger(cell) && cell >= 1 && cell <= 31) count++;
+      else if (typeof cell === 'string' && /^\s*\d{1,2}\s*$/.test(cell)) {
+        const n = parseInt(cell.trim());
         if (n >= 1 && n <= 31) count++;
       }
     }
@@ -142,18 +151,23 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedWeek | null {
   for (let c = 0; c < (rows[dayRow]?.length ?? 0); c++) {
     const v = cellVal(rows, dayRow, c);
     let dayNum = 0;
-    if (typeof v === 'number' && v >= 1 && v <= 31) dayNum = v;
-    else if (typeof v === 'string' && /^\d{1,2}$/.test(v.trim())) {
-      const n = parseInt(v);
+    if (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 31) dayNum = v;
+    else if (typeof v === 'string' && /^\s*\d{1,2}\s*$/.test(v)) {
+      const n = parseInt(v.trim());
       if (n >= 1 && n <= 31) dayNum = n;
     }
     if (!dayNum) continue;
 
-    // Find month in adjacent rows
+    // Find month name in adjacent rows (check up to 4 rows below)
     let monthNum = 0;
-    for (let delta = 1; delta <= 3; delta++) {
-      const below = cellStr(rows, dayRow + delta, c).toLowerCase();
+    for (let delta = 1; delta <= 4; delta++) {
+      const below = cellStr(rows, dayRow + delta, c).toLowerCase().trim();
       if (MESES[below]) { monthNum = MESES[below]; break; }
+      // Also try partial match (e.g. "abr" for "abril")
+      for (const [mes, num] of Object.entries(MESES)) {
+        if (below.startsWith(mes.slice(0, 3))) { monthNum = num; break; }
+      }
+      if (monthNum) break;
     }
 
     // Compute date
@@ -179,9 +193,9 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedWeek | null {
   }
   if (!dayCols.length) return null;
 
-  // Extract tasks per day (rows dayRow+2 … dayRow+27)
+  // Extract tasks per day (rows dayRow+2 … dayRow+40)
   const taskStart = dayRow + 2;
-  const taskEnd   = Math.min(taskStart + 25, rows.length - 1);
+  const taskEnd   = Math.min(taskStart + 40, rows.length - 1);
 
   const dias: ParsedDay[] = dayCols.map(({ col, fecha, dia }) => {
     const tareas: ParsedTask[] = [];
@@ -194,7 +208,7 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedWeek | null {
     return { fecha: toISO(fecha), dia, tareas };
   });
 
-  // Notes: find "Notas" header after task block, then collect col objCol
+  // Notes: find "Notas" header after task block, then collect from objCol
   let notesStart = taskEnd + 3;
   for (let r = taskEnd; r < Math.min(taskEnd + 20, rows.length); r++) {
     for (let c = 0; c < (rows[r]?.length ?? 0); c++) {
@@ -323,7 +337,7 @@ export function ExcelImport() {
 
         const weeks: ParsedWeek[] = [];
         for (const name of targetSheets) {
-          const parsed = parseSheet(wb.Sheets[name]);
+          const parsed = parseSheet(wb.Sheets[name], name);
           if (parsed) weeks.push(parsed);
         }
 
