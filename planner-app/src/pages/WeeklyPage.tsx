@@ -3,12 +3,45 @@ import { Clock, AlertCircle } from 'lucide-react';
 import { usePlanner } from '../store/PlannerContext';
 import { getWeekDays, toISODate, formatDate, capitalizeFirst } from '../utils/dateUtils';
 import { getItem, setItem, KEYS } from '../store/localStorage';
-import type { DailyPlan, WeeklyPlan, Goal } from '../types';
+import type { DailyPlan, WeeklyPlan, Goal, WeeklyItem } from '../types';
 import { WeekDayColumn } from '../components/weekly/WeekDayColumn';
 import { WeeklyGoals } from '../components/weekly/WeeklyGoals';
+import { WeeklyItemList, EmergenciaHeader } from '../components/weekly/WeeklyItemList';
 
-function emptyWeeklyPlan(weekStart: string): WeeklyPlan {
-  return { weekStart, goals: [], pendientes: '', emergencias: '' };
+function migrateItems(raw: unknown): WeeklyItem[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw as WeeklyItem[];
+  if (typeof raw === 'string') {
+    return raw.split('\n').filter(l => l.trim()).map(title => ({
+      id: crypto.randomUUID(),
+      title: title.trim(),
+      completed: false,
+      createdAt: new Date().toISOString(),
+    }));
+  }
+  return [];
+}
+
+function loadWeeklyPlan(weekStart: string): WeeklyPlan {
+  const saved = getItem<WeeklyPlan>(KEYS.weekly(weekStart));
+  if (saved) {
+    return {
+      ...saved,
+      goals: saved.goals ?? [],
+      pendientes: migrateItems((saved as any).pendientes),
+      emergencias: migrateItems((saved as any).emergencias),
+    };
+  }
+  // No plan yet — carry over uncompleted pendientes from previous week
+  const prevDate = new Date(weekStart + 'T12:00:00');
+  prevDate.setDate(prevDate.getDate() - 7);
+  const prevPlan = getItem<WeeklyPlan>(KEYS.weekly(toISODate(prevDate)));
+  const carryOver: WeeklyItem[] = prevPlan
+    ? migrateItems((prevPlan as any).pendientes)
+        .filter(i => !i.completed)
+        .map(i => ({ ...i, id: crypto.randomUUID(), carriedOver: true, createdAt: new Date().toISOString() }))
+    : [];
+  return { weekStart, goals: [], pendientes: carryOver, emergencias: [] };
 }
 
 export function WeeklyPage() {
@@ -20,22 +53,10 @@ export function WeeklyPage() {
     return weekDays.map(day => getItem<DailyPlan>(KEYS.daily(toISODate(day))));
   }, [weekDays]);
 
-  const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan>(() => {
-    const saved = getItem<WeeklyPlan>(KEYS.weekly(weekStart));
-    // Migrate old format (objetivo: string → goals: Goal[])
-    if (saved && 'objetivo' in saved) {
-      return { ...emptyWeeklyPlan(weekStart), pendientes: (saved as any).pendientes ?? '', emergencias: (saved as any).emergencias ?? '' };
-    }
-    return saved ?? emptyWeeklyPlan(weekStart);
-  });
+  const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan>(() => loadWeeklyPlan(weekStart));
 
   useEffect(() => {
-    const saved = getItem<WeeklyPlan>(KEYS.weekly(weekStart));
-    if (saved && 'objetivo' in saved) {
-      setWeeklyPlan({ ...emptyWeeklyPlan(weekStart), pendientes: (saved as any).pendientes ?? '', emergencias: (saved as any).emergencias ?? '' });
-    } else {
-      setWeeklyPlan(saved ?? emptyWeeklyPlan(weekStart));
-    }
+    setWeeklyPlan(loadWeeklyPlan(weekStart));
   }, [weekStart]);
 
   function persist(updated: WeeklyPlan) {
@@ -47,8 +68,12 @@ export function WeeklyPage() {
     persist({ ...weeklyPlan, goals });
   }
 
-  function updateField(field: 'pendientes' | 'emergencias', value: string) {
-    persist({ ...weeklyPlan, [field]: value });
+  function updatePendientes(pendientes: WeeklyItem[]) {
+    persist({ ...weeklyPlan, pendientes });
+  }
+
+  function updateEmergencias(emergencias: WeeklyItem[]) {
+    persist({ ...weeklyPlan, emergencias });
   }
 
   // Only past days of this week with pending tasks
@@ -89,7 +114,7 @@ export function WeeklyPage() {
 
         {/* Note boxes */}
         <div className="grid grid-cols-3 gap-3">
-          {/* Objetivos semanales — same format as monthly goals */}
+          {/* Objetivos semanales */}
           <div className="border rounded-xl overflow-hidden border-green-400 flex flex-col">
             <div className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-center bg-green-700 text-white flex-shrink-0">
               Objetivos semanales
@@ -104,22 +129,35 @@ export function WeeklyPage() {
             </div>
           </div>
 
-          <NoteBox
-            label="Elementos pendientes"
-            value={weeklyPlan.pendientes}
-            onChange={v => updateField('pendientes', v)}
-            readOnly={isReadOnly}
-            headerClass="bg-green-700 text-white"
-            borderClass="border-green-400"
-          />
-          <NoteBox
-            label="Emergencias"
-            value={weeklyPlan.emergencias}
-            onChange={v => updateField('emergencias', v)}
-            readOnly={isReadOnly}
-            headerClass="bg-red-600 text-white"
-            borderClass="border-red-400"
-          />
+          {/* Elementos pendientes */}
+          <div className="border rounded-xl overflow-hidden border-green-400 flex flex-col">
+            <div className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-center bg-green-700 text-white flex-shrink-0">
+              Elementos pendientes
+            </div>
+            <div className="flex-1 p-2 bg-white min-h-[130px]">
+              <WeeklyItemList
+                items={weeklyPlan.pendientes}
+                variant="pendientes"
+                readOnly={isReadOnly}
+                onChange={updatePendientes}
+              />
+            </div>
+          </div>
+
+          {/* Emergencias */}
+          <div className="border rounded-xl overflow-hidden border-red-400 flex flex-col">
+            <div className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-center bg-red-600 text-white flex-shrink-0">
+              <EmergenciaHeader />
+            </div>
+            <div className="flex-1 p-2 bg-white min-h-[130px]">
+              <WeeklyItemList
+                items={weeklyPlan.emergencias}
+                variant="emergencias"
+                readOnly={isReadOnly}
+                onChange={updateEmergencias}
+              />
+            </div>
+          </div>
         </div>
 
         {/* 7-day grid */}
@@ -164,28 +202,6 @@ export function WeeklyPage() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function NoteBox({
-  label, value, onChange, readOnly, headerClass, borderClass,
-}: {
-  label: string; value: string; onChange: (v: string) => void;
-  readOnly: boolean; headerClass: string; borderClass: string;
-}) {
-  return (
-    <div className={`border rounded-xl overflow-hidden ${borderClass}`}>
-      <div className={`px-3 py-2 text-xs font-bold uppercase tracking-wide text-center ${headerClass}`}>
-        {label}
-      </div>
-      <textarea
-        className="w-full px-3 py-2.5 text-xs text-text-primary resize-none focus:outline-none bg-white min-h-[130px] leading-relaxed"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        readOnly={readOnly}
-        placeholder={readOnly ? '' : 'Un ítem por línea...'}
-      />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { Flame } from 'lucide-react';
 import { clsx } from 'clsx';
 import { usePlanner } from '../store/PlannerContext';
 import { getItem, KEYS } from '../store/localStorage';
-import { subDaysUtil, toISODate, formatDate, capitalizeFirst } from '../utils/dateUtils';
+import { subDaysUtil, toISODate, formatDate, capitalizeFirst, getWeekDays } from '../utils/dateUtils';
 import type { DailyPlan } from '../types';
 
 function getLast(n: number): Date[] {
@@ -20,6 +20,73 @@ function calcStreak(habitId: string): number {
     else break;
   }
   return streak;
+}
+
+function WeeklyCompletionChart() {
+  const weekStats = useMemo(() => {
+    const today = new Date();
+    const currentWeekDays = getWeekDays(today);
+    const currentThursday = currentWeekDays[0];
+    return Array.from({ length: 8 }, (_, i) => {
+      const weekStart = subDaysUtil(currentThursday, (7 - i) * 7);
+      const days = getWeekDays(weekStart);
+      let total = 0;
+      let completed = 0;
+      for (const d of days) {
+        const plan = getItem<DailyPlan>(KEYS.daily(toISODate(d)));
+        total += plan?.tasks.length ?? 0;
+        completed += plan?.tasks.filter(t => t.status === 'completada').length ?? 0;
+      }
+      const pct = total > 0 ? Math.round((completed / total) * 100) : null;
+      return { weekStart, total, completed, pct };
+    });
+  }, []);
+
+  return (
+    <div className="bg-white border border-border rounded-xl p-5">
+      <h3 className="text-sm font-semibold text-text-primary mb-1">
+        % Cumplimiento semanal — últimas 8 semanas
+      </h3>
+      <p className="text-xs text-text-muted mb-4">Tareas completadas vs total · verde ≥80%, naranja 50–79%, rojo &lt;50%</p>
+      <div className="flex items-end gap-1.5" style={{ height: 100 }}>
+        {weekStats.map(({ weekStart, pct }, i) => {
+          const barColor = pct === null ? 'bg-gray-100'
+            : pct >= 80 ? 'bg-green-500'
+            : pct >= 50 ? 'bg-amber-400'
+            : 'bg-red-400';
+          const heightPct = pct === null ? 4 : Math.max(6, pct);
+          const label = formatDate(weekStart, 'd/M');
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center justify-end group relative" style={{ height: 100 }}>
+              <div
+                className={clsx('w-full rounded-t transition-all duration-300', barColor)}
+                style={{ height: `${heightPct}%` }}
+              />
+              <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                <div className="bg-gray-900 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap">
+                  Sem {label}{pct !== null ? `: ${pct}%` : ': sin tareas'}
+                </div>
+                <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex mt-1.5">
+        {weekStats.map(({ weekStart }, i) => (
+          <div key={i} className="flex-1 flex justify-center">
+            <span className="text-[9px] text-text-muted">{formatDate(weekStart, 'd/M')}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-4 mt-3">
+        <LegendDot color="bg-green-500" label="≥ 80%" />
+        <LegendDot color="bg-amber-400" label="50–79%" />
+        <LegendDot color="bg-red-400" label="< 50%" />
+        <LegendDot color="bg-gray-100 border border-gray-200" label="Sin tareas" />
+      </div>
+    </div>
+  );
 }
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub: string }) {
@@ -226,6 +293,9 @@ export function StatsPage() {
             </div>
           </div>
         )}
+
+        {/* Weekly completion % chart — last 8 weeks */}
+        <WeeklyCompletionChart />
 
         {/* Day-by-day detail */}
         <div className="bg-white border border-border rounded-xl p-5">

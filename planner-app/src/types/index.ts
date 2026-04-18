@@ -90,11 +90,19 @@ export interface Goal {
   updatedAt: string;
 }
 
+export interface WeeklyItem {
+  id: string;
+  title: string;
+  completed: boolean;
+  carriedOver?: boolean; // true if carried from the previous week
+  createdAt: string;
+}
+
 export interface WeeklyPlan {
-  weekStart: string;       // ISO date of Thursday
-  goals: Goal[];           // weekly objectives with progress tracking
-  pendientes: string;      // free-text pending items (one per line)
-  emergencias: string;     // free-text emergencies (one per line)
+  weekStart: string;           // ISO date of Thursday
+  goals: Goal[];               // weekly objectives with progress tracking
+  pendientes: WeeklyItem[];    // obligations that carry over if unfinished
+  emergencias: WeeklyItem[];   // urgent issues that arise during the shift
 }
 
 export interface DailyPlan {
