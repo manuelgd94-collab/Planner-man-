@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle2, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 import { usePlanner } from '../store/PlannerContext';
 import { getWeekDays, toISODate, formatDate, capitalizeFirst } from '../utils/dateUtils';
@@ -8,6 +8,7 @@ import type { DailyPlan, WeeklyPlan, Goal, WeeklyItem } from '../types';
 import { WeekDayColumn } from '../components/weekly/WeekDayColumn';
 import { WeeklyGoals } from '../components/weekly/WeeklyGoals';
 import { WeeklyItemList, EmergenciaHeader } from '../components/weekly/WeeklyItemList';
+import { WeeklyReport } from '../components/weekly/WeeklyReport';
 
 function migrateItems(raw: unknown): WeeklyItem[] {
   if (!raw) return [];
@@ -47,6 +48,7 @@ function loadWeeklyPlan(weekStart: string): WeeklyPlan {
 
 export function WeeklyPage() {
   const { state, dispatch, isReadOnly } = usePlanner();
+  const [showReport, setShowReport] = useState(false);
   const weekDays = useMemo(() => getWeekDays(state.selectedDate), [state.selectedDate]);
   const weekStart = toISODate(weekDays[0]);
 
@@ -119,7 +121,16 @@ export function WeeklyPage() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-[1400px] mx-auto p-6 space-y-4">
-        <p className="text-xs text-text-muted">{weekLabel} · Haz clic en un día para editarlo</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-text-muted">{weekLabel} · Haz clic en un día para editarlo</p>
+          <button
+            onClick={() => setShowReport(true)}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition-colors"
+          >
+            <FileText size={13} />
+            Reporte de turno
+          </button>
+        </div>
 
         {/* Note boxes */}
         <div className="grid grid-cols-3 gap-3">
@@ -260,6 +271,8 @@ export function WeeklyPage() {
           );
         })()}
       </div>
+
+      <WeeklyReport open={showReport} onClose={() => setShowReport(false)} />
     </div>
   );
 }
