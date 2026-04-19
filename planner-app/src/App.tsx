@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Lock, Eye } from 'lucide-react';
+import { Lock, Eye, RefreshCw } from 'lucide-react';
 import { PlannerProvider, usePlanner } from './store/PlannerContext';
 import { AppShell } from './components/layout/AppShell';
 import { PinModal } from './components/auth/PinModal';
 import { hasPin, setLocked } from './store/auth';
+import { cloudSyncToLocal, isCloudEnabled } from './store/cloudSync';
 
 function LockScreen() {
   const { state, dispatch } = usePlanner();
@@ -92,6 +93,22 @@ function KeyboardShortcuts() {
 }
 
 function App() {
+  const [synced, setSynced] = useState(!isCloudEnabled());
+
+  useEffect(() => {
+    if (!isCloudEnabled()) return;
+    cloudSyncToLocal().finally(() => setSynced(true));
+  }, []);
+
+  if (!synced) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-white">
+        <RefreshCw size={28} className="text-gray-400 animate-spin" />
+        <p className="text-sm text-text-secondary">Sincronizando datos…</p>
+      </div>
+    );
+  }
+
   return (
     <PlannerProvider>
       <KeyboardShortcuts />

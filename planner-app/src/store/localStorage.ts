@@ -1,3 +1,5 @@
+import { cloudSet } from './cloudSync';
+
 export const SCHEMA_VERSION = 1;
 const PREFIX = `planner:v${SCHEMA_VERSION}`;
 
@@ -26,6 +28,7 @@ export function getItem<T>(key: string): T | null {
 export function setItem<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    cloudSet(key, value);
   } catch {
     // storage full or unavailable
   }
