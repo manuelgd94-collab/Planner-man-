@@ -42,7 +42,7 @@ export function OverdueTasks() {
       }
     }
     return entries;
-  }, [state.selectedDate, todayISO]);
+  }, [state.selectedDate, state.dailyPlan, todayISO]);
 
   if (overdue.length === 0) return null;
 
