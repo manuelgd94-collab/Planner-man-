@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pencil, Trash2, Clock, MoveRight } from 'lucide-react';
+import { Pencil, Trash2, Clock, MoveRight, Zap } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { Task } from '../../types';
 import { Modal } from '../ui/Modal';
@@ -85,6 +85,11 @@ export function TaskItem({ task, onToggle, onUpdate, onDelete }: TaskItemProps) 
             {isRescheduled && (
               <span className="ml-1.5 inline-flex items-center gap-0.5 text-[9px] px-1 py-0 rounded bg-orange-100 text-orange-700 font-semibold align-middle">
                 <MoveRight size={8} /> reprogramada
+              </span>
+            )}
+            {task.unplanned && !isRescheduled && (
+              <span className="ml-1.5 inline-flex items-center gap-0.5 text-[9px] px-1 py-0 rounded bg-purple-100 text-purple-700 font-semibold align-middle">
+                <Zap size={8} /> no planificada
               </span>
             )}
           </p>

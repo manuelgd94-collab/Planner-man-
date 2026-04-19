@@ -71,16 +71,19 @@ function KpiCard({ label, value, sub, accent, trend }: {
 
 /* ─── 30-day completion sparkline ──────────────────────── */
 
-function DailyCompletionChart({ data }: { data: { date: Date; pct: number | null }[] }) {
+function DailyCompletionChart({ data }: { data: { date: Date; pct: number | null; unplannedDone: number }[] }) {
   return (
     <>
       <div className="flex items-end gap-0.5" style={{ height: 72 }}>
-        {data.map(({ date, pct }, i) => {
+        {data.map(({ date, pct, unplannedDone }, i) => {
           const color = pct === null ? 'bg-gray-100' : pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-400';
           return (
             <div key={i} className="flex-1 flex flex-col justify-end group relative" style={{ height: 72 }}>
               <div className={clsx('w-full rounded-t', color)} style={{ height: `${pct === null ? 4 : Math.max(5, pct)}%` }} />
-              <Tooltip>{capitalizeFirst(formatDate(date, 'EEE d MMM'))}{pct !== null ? `: ${pct}%` : ': sin tareas'}</Tooltip>
+              <Tooltip>
+                {capitalizeFirst(formatDate(date, 'EEE d MMM'))}{pct !== null ? `: ${pct}%` : ': sin tareas'}
+                {unplannedDone > 0 && <div>+{unplannedDone} no planificada{unplannedDone > 1 ? 's' : ''}</div>}
+              </Tooltip>
             </div>
           );
         })}
@@ -301,20 +304,28 @@ export function StatsPage() {
   );
 
   const weekStats = useMemo(
-    () => weekPlans.map(({ date, plan }) => ({
-      date,
-      total:     plan?.tasks.length ?? 0,
-      completed: plan?.tasks.filter(t => t.status === 'completada').length ?? 0,
-    })),
+    () => weekPlans.map(({ date, plan }) => {
+      const all      = plan?.tasks ?? [];
+      const planned  = all.filter(t => !t.unplanned);
+      return {
+        date,
+        total:         planned.length,
+        completed:     planned.filter(t => t.status === 'completada').length,
+        unplannedDone: all.filter(t => t.unplanned && t.status === 'completada').length,
+      };
+    }),
     [weekPlans]
   );
 
   const monthStats = useMemo(
     () => last30.map(d => {
       const plan = getItem<DailyPlan>(KEYS.daily(toISODate(d)));
-      const total = plan?.tasks.length ?? 0;
-      const completed = plan?.tasks.filter(t => t.status === 'completada').length ?? 0;
-      return { date: d, total, completed, pct: total > 0 ? Math.round((completed / total) * 100) : null };
+      const allTasks  = plan?.tasks ?? [];
+      const planned   = allTasks.filter(t => !t.unplanned);
+      const total     = planned.length;
+      const completed = planned.filter(t => t.status === 'completada').length;
+      const unplannedDone = allTasks.filter(t => t.unplanned && t.status === 'completada').length;
+      return { date: d, total, completed, unplannedDone, pct: total > 0 ? Math.round((completed / total) * 100) : null };
     }),
     [last30]
   );
@@ -330,10 +341,12 @@ export function StatsPage() {
   );
 
   // KPI derived values
-  const todayPlan = getItem<DailyPlan>(KEYS.daily(toISODate(new Date())));
-  const todayTasks = todayPlan?.tasks ?? [];
-  const todayDone  = todayTasks.filter(t => t.status === 'completada').length;
-  const todayPct   = todayTasks.length > 0 ? Math.round((todayDone / todayTasks.length) * 100) : null;
+  const todayPlan    = getItem<DailyPlan>(KEYS.daily(toISODate(new Date())));
+  const todayAll     = todayPlan?.tasks ?? [];
+  const todayPlanned = todayAll.filter(t => !t.unplanned);
+  const todayDone    = todayPlanned.filter(t => t.status === 'completada').length;
+  const todayUnplannedDone = todayAll.filter(t => t.unplanned && t.status === 'completada').length;
+  const todayPct     = todayPlanned.length > 0 ? Math.round((todayDone / todayPlanned.length) * 100) : null;
 
   const totalWeek  = weekStats.reduce((s, d) => s + d.completed, 0);
   const maxStreak  = habitStats.length > 0 ? Math.max(...habitStats.map(h => h.streak)) : 0;
@@ -364,7 +377,9 @@ export function StatsPage() {
           <KpiCard
             label="Hoy"
             value={todayPct !== null ? `${todayPct}%` : '—'}
-            sub={todayTasks.length > 0 ? `${todayDone}/${todayTasks.length} tareas` : 'Sin tareas registradas'}
+            sub={todayPlanned.length > 0
+              ? `${todayDone}/${todayPlanned.length} plan${todayUnplannedDone > 0 ? ` · +${todayUnplannedDone} extra` : ''}`
+              : 'Sin tareas planificadas'}
             accent={todayPct === null ? 'border-l-gray-300' : todayPct >= 80 ? 'border-l-green-500' : todayPct >= 50 ? 'border-l-amber-400' : 'border-l-red-400'}
           />
           <KpiCard
@@ -406,7 +421,7 @@ export function StatsPage() {
           <div className="col-span-5 bg-white border border-border rounded-xl p-4">
             <h3 className="text-xs font-semibold text-text-primary mb-3">Semana actual — detalle por día</h3>
             <div className="space-y-1.5">
-              {weekStats.map(({ date, total, completed }) => {
+              {weekStats.map(({ date, total, completed, unplannedDone }) => {
                 const pct = total > 0 ? Math.round((completed / total) * 100) : null;
                 const barColor = pct === null ? '' : pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-400';
                 return (
@@ -417,8 +432,9 @@ export function StatsPage() {
                     <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                       {pct !== null && <div className={clsx('h-full rounded-full transition-all', barColor)} style={{ width: `${pct}%` }} />}
                     </div>
-                    <span className="text-[10px] text-text-muted w-16 text-right flex-shrink-0">
+                    <span className="text-[10px] text-text-muted w-20 text-right flex-shrink-0">
                       {total === 0 ? '—' : `${completed}/${total} · ${pct}%`}
+                      {unplannedDone > 0 && <span className="text-purple-400"> +{unplannedDone}</span>}
                     </span>
                   </div>
                 );

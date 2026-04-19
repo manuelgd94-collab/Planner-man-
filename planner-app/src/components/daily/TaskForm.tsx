@@ -22,9 +22,10 @@ interface TaskFormProps {
   onSubmit: (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onCancel: () => void;
   dueDate: string;
+  forceUnplanned?: boolean;
 }
 
-export function TaskForm({ initial, onSubmit, onCancel, dueDate }: TaskFormProps) {
+export function TaskForm({ initial, onSubmit, onCancel, dueDate, forceUnplanned }: TaskFormProps) {
   const { state } = usePlanner();
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
@@ -33,6 +34,7 @@ export function TaskForm({ initial, onSubmit, onCancel, dueDate }: TaskFormProps
   const [startTime, setStartTime] = useState(initial?.startTime ?? '');
   const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule | ''>(initial?.recurrenceRule ?? '');
   const [goalId, setGoalId] = useState(initial?.goalId ?? '');
+  const [unplanned, setUnplanned] = useState(forceUnplanned ?? initial?.unplanned ?? false);
 
   const availableGoals = useMemo(() => [
     ...(state.monthlyPlan?.goals ?? [])
@@ -58,11 +60,13 @@ export function TaskForm({ initial, onSubmit, onCancel, dueDate }: TaskFormProps
       goalId: goalId || undefined,
       completedAt: initial?.completedAt,
       templateId: initial?.templateId,
+      rescheduledFrom: initial?.rescheduledFrom,
+      unplanned: unplanned || undefined,
     });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className={`space-y-4 ${unplanned ? 'ring-1 ring-purple-300 rounded-xl p-3 -m-3' : ''}`}>
       <div>
         <label className="block text-xs font-medium text-text-secondary mb-1">Título *</label>
         <input
@@ -145,10 +149,28 @@ export function TaskForm({ initial, onSubmit, onCancel, dueDate }: TaskFormProps
         </p>
       )}
 
+      {!forceUnplanned && (
+        <button
+          type="button"
+          onClick={() => setUnplanned(v => !v)}
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
+            unplanned
+              ? 'bg-purple-50 border-purple-300 text-purple-700'
+              : 'border-border text-text-muted hover:border-purple-300 hover:text-purple-600'
+          }`}
+        >
+          <span className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${unplanned ? 'bg-purple-500 border-purple-500' : 'border-gray-400'}`}>
+            {unplanned && <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          </span>
+          Tarea no planificada
+          <span className="ml-auto text-[10px] text-text-muted font-normal">no afecta el % de cumplimiento</span>
+        </button>
+      )}
+
       <div className="flex gap-2 pt-2 justify-end">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
-        <Button type="submit" variant="primary" size="sm">
-          {initial ? 'Guardar cambios' : 'Agregar tarea'}
+        <Button type="submit" variant="primary" size="sm" className={unplanned ? 'bg-purple-600 hover:bg-purple-700' : ''}>
+          {initial ? 'Guardar cambios' : unplanned ? 'Registrar no planificada' : 'Agregar tarea'}
         </Button>
       </div>
     </form>

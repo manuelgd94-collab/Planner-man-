@@ -31,7 +31,7 @@ export function OverdueTasks() {
       if (iso >= todayISO) continue;
       const plan = getItem<DailyPlan>(KEYS.daily(iso));
       const pending = (plan?.tasks ?? []).filter(
-        t => t.status === 'pendiente' || t.status === 'en_progreso'
+        t => (t.status === 'pendiente' || t.status === 'en_progreso') && !t.unplanned
       );
       for (const task of pending) {
         entries.push({

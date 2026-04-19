@@ -13,6 +13,7 @@ export interface Task {
   tags: string[];
   startTime?: string; // "HH:MM" e.g. "09:00"
   rescheduledFrom?: string; // ISO date of original day if task was moved from another day
+  unplanned?: boolean; // true if task was not in the original plan (added ad-hoc during the day)
   recurrenceRule?: RecurrenceRule;
   templateId?: string; // links to RecurringTemplate
   goalId?: string;     // links to Goal for automatic progress update

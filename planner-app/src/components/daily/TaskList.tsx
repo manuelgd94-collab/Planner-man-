@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, CheckCircle2, Circle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Clock, AlertCircle, Zap } from 'lucide-react';
 import { TaskItem } from './TaskItem';
 import { TaskForm } from './TaskForm';
 import { Modal } from '../ui/Modal';
@@ -11,12 +11,14 @@ import { toISODate } from '../../utils/dateUtils';
 export function TaskList() {
   const { state, addTask, updateTask, deleteTask, toggleTask, isReadOnly } = usePlanner();
   const [showForm, setShowForm] = useState(false);
+  const [showUnplannedForm, setShowUnplannedForm] = useState(false);
   const dateKey = toISODate(state.selectedDate);
   const tasks = state.dailyPlan?.tasks ?? [];
 
-  const active = tasks.filter(t => t.status !== 'completada' && t.status !== 'reprogramada');
+  const active      = tasks.filter(t => t.status !== 'completada' && t.status !== 'reprogramada' && !t.unplanned);
   const scheduled   = active.filter(t => !!t.startTime);
   const unscheduled = active.filter(t => !t.startTime);
+  const unplanned   = tasks.filter(t => !!t.unplanned && t.status !== 'completada' && t.status !== 'reprogramada');
   const completed   = tasks.filter(t => t.status === 'completada');
 
   function renderTask(task: (typeof tasks)[number]) {
@@ -37,14 +39,19 @@ export function TaskList() {
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Tareas</span>
           <span className="text-xs text-text-muted bg-surface-tertiary px-1.5 py-0.5 rounded-full">
-            {active.length} pendientes
+            {active.length} plan · {unplanned.length > 0 && <span className="text-purple-500">+{unplanned.length} extra</span>}
           </span>
         </div>
         {!isReadOnly && (
-          <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}>
-            <Plus size={14} />
-            Agregar
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={() => setShowUnplannedForm(true)} title="Registrar tarea no planificada">
+              <Zap size={13} className="text-purple-500" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}>
+              <Plus size={14} />
+              Agregar
+            </Button>
+          </div>
         )}
       </div>
 
@@ -83,9 +90,22 @@ export function TaskList() {
             </>
           )}
 
+          {/* Unplanned tasks */}
+          {unplanned.length > 0 && (
+            <>
+              <div className="flex items-center gap-1.5 px-2.5 pt-2 pb-0.5">
+                <Zap size={10} className="text-purple-500" />
+                <span className="text-[10px] font-semibold text-purple-500 uppercase tracking-wide">
+                  No planificadas ({unplanned.length})
+                </span>
+              </div>
+              {unplanned.map(renderTask)}
+            </>
+          )}
+
           {/* Completed */}
           {completed.length > 0 && (
-            <details className="mt-2" open={active.length === 0}>
+            <details className="mt-2" open={active.length === 0 && unplanned.length === 0}>
               <summary className="text-xs text-text-muted cursor-pointer select-none flex items-center gap-1.5 px-3 py-1 hover:text-text-secondary">
                 <CheckCircle2 size={12} />
                 {completed.length} completada{completed.length > 1 ? 's' : ''}
@@ -103,6 +123,15 @@ export function TaskList() {
           dueDate={dateKey}
           onSubmit={data => { addTask(data); setShowForm(false); }}
           onCancel={() => setShowForm(false)}
+        />
+      </Modal>
+
+      <Modal open={showUnplannedForm} onClose={() => setShowUnplannedForm(false)} title="Registrar tarea no planificada">
+        <TaskForm
+          dueDate={dateKey}
+          forceUnplanned
+          onSubmit={data => { addTask(data); setShowUnplannedForm(false); }}
+          onCancel={() => setShowUnplannedForm(false)}
         />
       </Modal>
     </div>
