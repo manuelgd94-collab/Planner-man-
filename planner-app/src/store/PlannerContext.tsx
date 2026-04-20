@@ -8,6 +8,7 @@ import { toISODate, toYearMonth } from '../utils/dateUtils';
 import { addHistoryEntry } from './historyLog';
 import { isLocked, hasPin } from './auth';
 import { getTemplates, saveTemplates, templateAppliesTo, taskFromTemplate } from './recurringTasks';
+import { isAuthConfigured, type UserProfile } from './firebaseAuth';
 
 interface AppState {
   view: ViewType;
@@ -250,6 +251,8 @@ interface PlannerContextValue {
   state: AppState;
   dispatch: React.Dispatch<Action>;
   isReadOnly: boolean;
+  currentUser: UserProfile | null;
+  isAdmin: boolean;
   addRecurringTemplate: (t: Omit<RecurringTemplate, 'id' | 'createdAt'>) => void;
   deleteRecurringTemplate: (id: string) => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -271,12 +274,8 @@ const PlannerContext = createContext<PlannerContextValue | null>(null);
 
 const defaultSettings: AppSettings = { sidebarCollapsed: false };
 
-export function PlannerProvider({ children }: { children: ReactNode }) {
+export function PlannerProvider({ children, currentUser = null }: { children: ReactNode; currentUser?: UserProfile | null }) {
   const today = new Date();
-  // Always start locked unless this browser has explicitly unlocked before.
-  // isLocked() returns true by default (when key is absent), so:
-  //   - Owner's browser (unlocked recently): false → editable immediately
-  //   - Any other browser (no key): true → read-only until PIN is entered or "view only" chosen
   const initialLocked = isLocked();
 
   const [state, dispatch] = useReducer(reducer, {
@@ -292,9 +291,9 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     locked: initialLocked,
   });
 
-  // isReadOnly if explicitly locked OR if this browser has no PIN configured
-  // (viewer browsers never have a PIN, so they stay read-only even after dismissing the lock screen)
-  const isReadOnly = state.locked || !hasPin();
+  // When Firebase Auth is active: logged-in = can edit. Otherwise fall back to PIN system.
+  const isReadOnly = isAuthConfigured() ? !currentUser : (state.locked || !hasPin());
+  const isAdmin = currentUser?.role === 'admin' || false;
 
   // Always-current state ref for callbacks
   const stateRef = useRef(state);
@@ -536,6 +535,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     <PlannerContext.Provider value={{
       state, dispatch,
       isReadOnly,
+      currentUser,
+      isAdmin,
       addTask, updateTask, deleteTask, toggleTask,
       addHabit, deleteHabit, toggleHabitEntry,
       addGoal, updateGoal, deleteGoal,

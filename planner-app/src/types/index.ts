@@ -142,7 +142,7 @@ export interface AnnualPlan {
   goals: Goal[];
 }
 
-export type ViewType = 'diario' | 'semanal' | 'mensual' | 'anual' | 'historial' | 'estadisticas';
+export type ViewType = 'diario' | 'semanal' | 'mensual' | 'anual' | 'historial' | 'estadisticas' | 'admin';
 
 export interface AppSettings {
   sidebarCollapsed: boolean;

@@ -3,14 +3,17 @@ import { Lock, Eye, RefreshCw } from 'lucide-react';
 import { PlannerProvider, usePlanner } from './store/PlannerContext';
 import { AppShell } from './components/layout/AppShell';
 import { PinModal } from './components/auth/PinModal';
+import { LoginScreen } from './components/auth/LoginScreen';
 import { hasPin, setLocked } from './store/auth';
-import { cloudSyncToLocal, cloudUploadAll, needsBulkUpload, isCloudEnabled } from './store/cloudSync';
+import { cloudSyncToLocal, cloudUploadAll, needsBulkUpload, isCloudEnabled, clearLocalPlannerData } from './store/cloudSync';
+import { onAuthChange, isAuthConfigured, type UserProfile } from './store/firebaseAuth';
+
+// ── Legacy PIN lock screen (only used when Firebase Auth is NOT configured) ───
 
 function LockScreen() {
   const { state, dispatch } = usePlanner();
   const [showPin, setShowPin] = useState(false);
 
-  // Auto-open PIN modal if this browser has a PIN configured
   useEffect(() => {
     if (state.locked && hasPin()) {
       setShowPin(true);
@@ -20,9 +23,7 @@ function LockScreen() {
   if (!state.locked) return null;
 
   function handleViewOnly() {
-    // Dismiss the lock screen overlay but do NOT unlock editing.
-    // isReadOnly stays true because !hasPin() — viewer browsers have no PIN.
-    setLocked(false); // persist so lock screen doesn't reappear on next visit
+    setLocked(false);
     dispatch({ type: 'SET_LOCKED', locked: false });
   }
 
@@ -41,7 +42,6 @@ function LockScreen() {
       </div>
 
       {hasPin() ? (
-        /* Owner's browser: just show the PIN button */
         <button
           onClick={() => setShowPin(true)}
           className="px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
@@ -49,7 +49,6 @@ function LockScreen() {
           Ingresar PIN
         </button>
       ) : (
-        /* Viewer's browser (no PIN): offer view-only or setup */
         <div className="flex flex-col gap-3 items-center w-full max-w-xs">
           <button
             onClick={handleViewOnly}
@@ -76,6 +75,8 @@ function LockScreen() {
   );
 }
 
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+
 function KeyboardShortcuts() {
   const { dispatch } = usePlanner();
   useEffect(() => {
@@ -92,35 +93,91 @@ function KeyboardShortcuts() {
   return null;
 }
 
+// ── Loading spinner ───────────────────────────────────────────────────────────
+
+function LoadingScreen({ msg }: { msg: string }) {
+  return (
+    <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-white">
+      <RefreshCw size={28} className="text-gray-400 animate-spin" />
+      <p className="text-sm text-text-secondary">{msg}</p>
+    </div>
+  );
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+
 function App() {
-  const [synced, setSynced] = useState(!isCloudEnabled());
+  const authEnabled = isAuthConfigured();
+
+  // Firebase Auth path
+  const [authReady, setAuthReady] = useState(!authEnabled);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('Sincronizando datos…');
 
-  useEffect(() => {
-    if (!isCloudEnabled()) return;
-    // Owner's PC (has PIN): upload all historical data to Firestore the first time
-    if (hasPin() && needsBulkUpload()) {
-      setSyncMsg('Subiendo historial a la nube… (solo esta vez)');
-      cloudUploadAll().finally(() => setSynced(true));
-    } else {
-      // Readers and owner after first upload: pull from Firestore
-      cloudSyncToLocal().finally(() => setSynced(true));
-    }
-  }, []);
+  // Legacy (no-auth) path
+  const [legacySynced, setLegacySynced] = useState(!isCloudEnabled() || authEnabled);
 
-  if (!synced) {
-    return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-white">
-        <RefreshCw size={28} className="text-gray-400 animate-spin" />
-        <p className="text-sm text-text-secondary">{syncMsg}</p>
-      </div>
-    );
+  useEffect(() => {
+    if (!authEnabled) {
+      // Legacy: bulk-upload or sync without auth
+      if (!isCloudEnabled()) return;
+      if (hasPin() && needsBulkUpload()) {
+        setSyncMsg('Subiendo historial a la nube… (solo esta vez)');
+        cloudUploadAll().finally(() => setLegacySynced(true));
+      } else {
+        cloudSyncToLocal().finally(() => setLegacySynced(true));
+      }
+      return;
+    }
+
+    // Firebase Auth: listen for auth state changes
+    const unsubscribe = onAuthChange(async (fbUser) => {
+      if (fbUser) {
+        // User just signed in — pull their data from Firestore
+        setSyncing(true);
+        setSyncMsg('Cargando tus datos…');
+        try {
+          await cloudSyncToLocal();
+        } finally {
+          setSyncing(false);
+        }
+        // Fetch profile from Firestore
+        const { getProfile } = await import('./store/firebaseAuth');
+        const profile = await getProfile(fbUser.uid);
+        setCurrentUser(profile);
+      } else {
+        // Signed out — clear local data and reset user
+        if (currentUser) {
+          clearLocalPlannerData();
+        }
+        setCurrentUser(null);
+      }
+      setAuthReady(true);
+    });
+
+    return unsubscribe;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authEnabled]);
+
+  // Show spinner during initial auth check
+  if (!authReady) return <LoadingScreen msg="Verificando sesión…" />;
+
+  // Show spinner during cloud sync after login
+  if (syncing) return <LoadingScreen msg={syncMsg} />;
+
+  // Firebase auth: show login when no user
+  if (authEnabled && !currentUser) {
+    return <LoginScreen onAuth={setCurrentUser} />;
   }
 
+  // Legacy path: show spinner during initial sync
+  if (!legacySynced) return <LoadingScreen msg={syncMsg} />;
+
   return (
-    <PlannerProvider>
+    <PlannerProvider currentUser={currentUser}>
       <KeyboardShortcuts />
-      <LockScreen />
+      {!authEnabled && <LockScreen />}
       <AppShell />
     </PlannerProvider>
   );

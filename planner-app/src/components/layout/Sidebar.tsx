@@ -1,4 +1,4 @@
-import { Calendar, CalendarDays, LayoutDashboard, ChevronLeft, ChevronRight, CalendarCheck, History, CalendarRange, BarChart2 } from 'lucide-react';
+import { Calendar, CalendarDays, LayoutDashboard, ChevronLeft, ChevronRight, CalendarCheck, History, CalendarRange, BarChart2, ShieldCheck, LogOut } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ViewType } from '../../types';
 import { usePlanner } from '../../store/PlannerContext';
@@ -6,8 +6,11 @@ import { getDaysInMonthGrid, isSameDayUtil, isTodayUtil, addMonthsUtil, subMonth
 import { DIAS_SEMANA, MESES } from '../../utils/constants';
 import { ExportImport } from '../settings/ExportImport';
 import { ExcelImport } from '../settings/ExcelImport';
+import { signOut } from '../../store/firebaseAuth';
+import { clearLocalPlannerData } from '../../store/cloudSync';
+import { isAuthConfigured } from '../../store/firebaseAuth';
 
-const NAV_ITEMS: { view: ViewType; label: string; icon: React.ElementType }[] = [
+const BASE_NAV_ITEMS: { view: ViewType; label: string; icon: React.ElementType }[] = [
   { view: 'diario', label: 'Diario', icon: Calendar },
   { view: 'semanal', label: 'Semanal', icon: CalendarRange },
   { view: 'mensual', label: 'Mensual', icon: CalendarDays },
@@ -21,7 +24,17 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed }: SidebarProps) {
-  const { state, dispatch } = usePlanner();
+  const { state, dispatch, currentUser, isAdmin } = usePlanner();
+
+  const navItems = isAdmin
+    ? [...BASE_NAV_ITEMS, { view: 'admin' as ViewType, label: 'Admin', icon: ShieldCheck }]
+    : BASE_NAV_ITEMS;
+
+  async function handleLogout() {
+    clearLocalPlannerData();
+    await signOut();
+    // App.tsx onAuthChange will set currentUser to null → LoginScreen shown
+  }
 
   const miniCalendarMonth = state.selectedDate;
   const gridDays = getDaysInMonthGrid(miniCalendarMonth);
@@ -45,7 +58,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
 
       {/* Nav items */}
       <nav className="flex flex-col gap-0.5 px-2 py-3">
-        {NAV_ITEMS.map(({ view, label, icon: Icon }) => (
+        {navItems.map(({ view, label, icon: Icon }) => (
           <button
             key={view}
             onClick={() => dispatch({ type: 'SET_VIEW', view })}
@@ -85,6 +98,30 @@ export function Sidebar({ collapsed }: SidebarProps) {
             <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-1.5">Excel</p>
             <ExcelImport />
           </div>
+        </div>
+      )}
+
+      {/* User info + logout (Firebase Auth only) */}
+      {isAuthConfigured() && currentUser && (
+        <div className={clsx('border-t border-border px-2 py-2 flex-shrink-0', collapsed ? 'flex justify-center' : '')}>
+          {collapsed ? (
+            <button onClick={handleLogout} title="Cerrar sesión" className="p-1.5 rounded hover:bg-surface-tertiary text-text-muted transition-colors">
+              <LogOut size={14} />
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 px-1.5 py-1">
+              <div className="w-6 h-6 rounded-full bg-gray-900 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                {currentUser.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-text-primary truncate">{currentUser.name}</p>
+                <p className="text-[10px] text-text-muted truncate">{isAdmin ? 'Administrador' : 'Usuario'}</p>
+              </div>
+              <button onClick={handleLogout} title="Cerrar sesión" className="p-1 rounded hover:bg-surface-tertiary text-text-muted transition-colors flex-shrink-0">
+                <LogOut size={13} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
