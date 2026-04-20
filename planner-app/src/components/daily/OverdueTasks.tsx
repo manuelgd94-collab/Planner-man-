@@ -74,20 +74,22 @@ export function OverdueTasks() {
                 e.dataTransfer.effectAllowed = 'move';
               }}
               className={clsx(
-                'flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-grab active:cursor-grabbing',
-                'bg-amber-100 hover:bg-amber-200 border border-amber-300 transition-colors'
+                'flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-grab active:cursor-grabbing transition-colors',
+                task.unplanned
+                  ? 'bg-purple-100 hover:bg-purple-200 border border-purple-300'
+                  : 'bg-amber-100 hover:bg-amber-200 border border-amber-300'
               )}
             >
-              <GripVertical size={11} className="text-amber-500 flex-shrink-0" />
+              <GripVertical size={11} className={task.unplanned ? 'text-purple-400 flex-shrink-0' : 'text-amber-500 flex-shrink-0'} />
               {task.unplanned
                 ? <Zap size={10} className="text-purple-500 flex-shrink-0" />
                 : <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', PRIORITY_DOT[task.priority])} />
               }
-              <span className="flex-1 text-xs text-amber-900 leading-tight truncate">{task.title}</span>
+              <span className={clsx('flex-1 text-xs leading-tight truncate', task.unplanned ? 'text-purple-900' : 'text-amber-900')}>{task.title}</span>
               {task.unplanned && (
-                <span className="text-[9px] text-purple-600 font-medium flex-shrink-0">no plan.</span>
+                <span className="text-[9px] text-purple-500 font-medium flex-shrink-0">no plan.</span>
               )}
-              <span className="text-[10px] text-amber-600 font-medium flex-shrink-0">{dayLabel}</span>
+              <span className={clsx('text-[10px] font-medium flex-shrink-0', task.unplanned ? 'text-purple-500' : 'text-amber-600')}>{dayLabel}</span>
             </div>
           ))}
         </div>
