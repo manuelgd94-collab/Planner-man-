@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { clsx } from 'clsx';
-import { AlertCircle, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronRight, GripVertical, Zap } from 'lucide-react';
 import { usePlanner } from '../../store/PlannerContext';
 import { getWeekDays, toISODate, formatDate, capitalizeFirst } from '../../utils/dateUtils';
 import { getItem, KEYS } from '../../store/localStorage';
@@ -31,7 +31,7 @@ export function OverdueTasks() {
       if (iso >= todayISO) continue;
       const plan = getItem<DailyPlan>(KEYS.daily(iso));
       const pending = (plan?.tasks ?? []).filter(
-        t => (t.status === 'pendiente' || t.status === 'en_progreso') && !t.unplanned
+        t => t.status === 'pendiente' || t.status === 'en_progreso'
       );
       for (const task of pending) {
         entries.push({
@@ -79,8 +79,14 @@ export function OverdueTasks() {
               )}
             >
               <GripVertical size={11} className="text-amber-500 flex-shrink-0" />
-              <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', PRIORITY_DOT[task.priority])} />
+              {task.unplanned
+                ? <Zap size={10} className="text-purple-500 flex-shrink-0" />
+                : <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', PRIORITY_DOT[task.priority])} />
+              }
               <span className="flex-1 text-xs text-amber-900 leading-tight truncate">{task.title}</span>
+              {task.unplanned && (
+                <span className="text-[9px] text-purple-600 font-medium flex-shrink-0">no plan.</span>
+              )}
               <span className="text-[10px] text-amber-600 font-medium flex-shrink-0">{dayLabel}</span>
             </div>
           ))}
