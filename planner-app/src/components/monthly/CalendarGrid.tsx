@@ -12,6 +12,14 @@ const PRIORITY_COLORS: Record<string, string> = {
   baja: 'bg-green-500',
 };
 
+const MOOD_COLORS: Record<number, string> = {
+  1: 'bg-red-400',
+  2: 'bg-orange-400',
+  3: 'bg-gray-400',
+  4: 'bg-blue-400',
+  5: 'bg-green-400',
+};
+
 export function CalendarGrid() {
   const { state, dispatch } = usePlanner();
   const { selectedDate } = state;
@@ -28,13 +36,13 @@ export function CalendarGrid() {
     const planned     = tasks.filter(t => !t.rescheduledFrom);
     const rescheduled = tasks.filter(t => !!t.rescheduledFrom);
     const allDone = tasks.length > 0 && tasks.every(t => t.status === 'completada');
-    return { tasks, planned, rescheduled, allDone };
+    return { tasks, planned, rescheduled, allDone, mood: plan?.mood ?? null };
   }
 
   return (
     <div className="bg-white border border-border rounded-xl p-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="text-base font-semibold text-text-primary">{monthLabel}</h2>
         <div className="flex gap-1">
           <button onClick={prevMonth} className="p-1.5 rounded hover:bg-surface-secondary text-text-secondary transition-colors">
@@ -46,8 +54,22 @@ export function CalendarGrid() {
         </div>
       </div>
 
+      {/* Legend */}
+      <div className="flex items-center gap-3 mb-2 flex-wrap">
+        <span className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Estado de ánimo:</span>
+        {([1,2,3,4,5] as const).map(m => {
+          const labels: Record<number,string> = { 1:'Mal', 2:'Regular', 3:'Normal', 4:'Bien', 5:'Excelente' };
+          return (
+            <span key={m} className="flex items-center gap-1 text-[10px] text-text-muted">
+              <span className={clsx('w-2 h-2 rounded-full', MOOD_COLORS[m])} />
+              {labels[m]}
+            </span>
+          );
+        })}
+      </div>
+
       {/* Day headers */}
-      <div className="grid grid-cols-7 mb-2">
+      <div className="grid grid-cols-7 mb-1">
         {DIAS_SEMANA.map(d => (
           <div key={d} className="text-center text-xs font-medium text-text-muted py-1">{d}</div>
         ))}
@@ -59,7 +81,7 @@ export function CalendarGrid() {
           if (!day) return <div key={i} />;
           const isToday = isTodayUtil(day);
           const isSelected = isSameDayUtil(day, selectedDate);
-          const { tasks, planned, rescheduled, allDone } = getDayData(day);
+          const { tasks, planned, rescheduled, allDone, mood } = getDayData(day);
           const hasTasks = tasks.length > 0;
 
           return (
@@ -72,6 +94,11 @@ export function CalendarGrid() {
                 isToday ? 'bg-gray-900 text-white' : 'hover:bg-surface-secondary text-text-primary',
               )}
             >
+              {/* Mood dot — top-right corner */}
+              {mood && (
+                <span className={clsx('absolute top-1 right-1 w-1.5 h-1.5 rounded-full', MOOD_COLORS[mood])} />
+              )}
+
               <span className={clsx('text-sm font-medium', isToday ? 'text-white' : '')}>
                 {day.getDate()}
               </span>

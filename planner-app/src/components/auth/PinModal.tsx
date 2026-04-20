@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from 'react';
-import { Lock, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect, type FormEvent } from 'react';
+import { Lock, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { hasPin, setPin, verifyPin, setLocked, removePin } from '../../store/auth';
+import { hasPin, setPin, setLocked, removePin, hashPin } from '../../store/auth';
+import { isCloudEnabled, getCloudAdminPin, setCloudAdminPin } from '../../store/cloudSync';
 
 interface PinModalProps {
   open: boolean;
@@ -15,7 +16,28 @@ export function PinModal({ open, onClose, onUnlocked }: PinModalProps) {
   const [confirmPin, setConfirmPin] = useState('');
   const [error, setError] = useState('');
   const [show, setShow] = useState(false);
-  const isSetup = !hasPin();
+  // null = no cloud pin found (setup mode), string = existing hash, 'loading' = checking
+  const [cloudHash, setCloudHash] = useState<string | null | 'loading'>('loading');
+
+  const localHasPin = hasPin();
+
+  useEffect(() => {
+    if (!open) return;
+    setError('');
+    setInputPin('');
+    setConfirmPin('');
+
+    if (localHasPin || !isCloudEnabled()) {
+      setCloudHash(null);
+      return;
+    }
+    setCloudHash('loading');
+    getCloudAdminPin().then(h => setCloudHash(h));
+  }, [open, localHasPin]);
+
+  // isSetup: true only when there's no PIN locally AND none in the cloud
+  const isLoading = !localHasPin && isCloudEnabled() && cloudHash === 'loading';
+  const isSetup = !localHasPin && cloudHash === null;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -25,11 +47,21 @@ export function PinModal({ open, onClose, onUnlocked }: PinModalProps) {
       if (pin.length < 4) { setError('El PIN debe tener al menos 4 caracteres'); return; }
       if (pin !== confirmPin) { setError('Los PINs no coinciden'); return; }
       setPin(pin);
+      setCloudAdminPin(hashPin(pin));
       setLocked(false);
       onUnlocked();
       onClose();
     } else {
-      if (verifyPin(pin)) {
+      // Verify against local hash (owner) or cloud hash (other devices)
+      const entered = hashPin(pin);
+      const stored = localHasPin
+        ? (localStorage.getItem('planner:auth:pin') ?? '')
+        : (cloudHash as string);
+      if (entered === stored) {
+        if (!localHasPin) {
+          // Save hash locally so this device can verify offline next time
+          localStorage.setItem('planner:auth:pin', entered);
+        }
         setLocked(false);
         onUnlocked();
         onClose();
@@ -54,47 +86,54 @@ export function PinModal({ open, onClose, onUnlocked }: PinModalProps) {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="relative">
-          <input
-            autoFocus
-            type={show ? 'text' : 'password'}
-            value={pin}
-            onChange={e => setInputPin(e.target.value)}
-            placeholder={isSetup ? 'Crear PIN' : 'PIN'}
-            className="w-full text-sm border border-border rounded-lg px-3 py-2.5 outline-none focus:border-gray-400 pr-10 text-center tracking-widest text-lg"
-          />
-          <button type="button" onClick={() => setShow(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted">
-            {show ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
+      {isLoading ? (
+        <div className="flex flex-col items-center gap-2 py-4">
+          <RefreshCw size={20} className="text-gray-400 animate-spin" />
+          <p className="text-xs text-text-muted">Verificando acceso…</p>
         </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="relative">
+            <input
+              autoFocus
+              type={show ? 'text' : 'password'}
+              value={pin}
+              onChange={e => setInputPin(e.target.value)}
+              placeholder={isSetup ? 'Crear PIN' : 'PIN'}
+              className="w-full text-sm border border-border rounded-lg px-3 py-2.5 outline-none focus:border-gray-400 pr-10 text-center tracking-widest text-lg"
+            />
+            <button type="button" onClick={() => setShow(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted">
+              {show ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
 
-        {isSetup && (
-          <input
-            type={show ? 'text' : 'password'}
-            value={confirmPin}
-            onChange={e => setConfirmPin(e.target.value)}
-            placeholder="Confirmar PIN"
-            className="w-full text-sm border border-border rounded-lg px-3 py-2.5 outline-none focus:border-gray-400 text-center tracking-widest text-lg"
-          />
-        )}
+          {isSetup && (
+            <input
+              type={show ? 'text' : 'password'}
+              value={confirmPin}
+              onChange={e => setConfirmPin(e.target.value)}
+              placeholder="Confirmar PIN"
+              className="w-full text-sm border border-border rounded-lg px-3 py-2.5 outline-none focus:border-gray-400 text-center tracking-widest text-lg"
+            />
+          )}
 
-        {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+          {error && <p className="text-xs text-red-500 text-center">{error}</p>}
 
-        <Button type="submit" variant="primary" className="w-full justify-center">
-          {isSetup ? 'Crear PIN y desbloquear' : 'Desbloquear'}
-        </Button>
+          <Button type="submit" variant="primary" className="w-full justify-center">
+            {isSetup ? 'Crear PIN y desbloquear' : 'Desbloquear'}
+          </Button>
 
-        {!isSetup && (
-          <button
-            type="button"
-            onClick={() => { removePin(); setLocked(false); onUnlocked(); onClose(); }}
-            className="w-full text-xs text-text-muted hover:text-red-500 transition-colors text-center mt-1"
-          >
-            Eliminar PIN (deshabilitar protección)
-          </button>
-        )}
-      </form>
+          {!isSetup && localHasPin && (
+            <button
+              type="button"
+              onClick={() => { removePin(); setLocked(false); onUnlocked(); onClose(); }}
+              className="w-full text-xs text-text-muted hover:text-red-500 transition-colors text-center mt-1"
+            >
+              Eliminar PIN (deshabilitar protección)
+            </button>
+          )}
+        </form>
+      )}
     </Modal>
   );
 }

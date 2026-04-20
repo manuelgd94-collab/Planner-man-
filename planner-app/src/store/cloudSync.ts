@@ -3,6 +3,7 @@ import {
   getFirestore,
   doc,
   setDoc,
+  getDoc,
   collection,
   getDocs,
   type Firestore,
@@ -92,4 +93,27 @@ export async function cloudUploadAll(): Promise<void> {
 
 export function needsBulkUpload(): boolean {
   return !localStorage.getItem(BULK_DONE_KEY);
+}
+
+// ── Admin PIN in cloud ──────────────────────────────────────────────────────
+// Stored as a special document so other devices can verify before allowing edits.
+const ADMIN_DOC_ID = '__admin__';
+
+export async function getCloudAdminPin(): Promise<string | null> {
+  const database = getDb();
+  if (!database) return null;
+  try {
+    const snap = await getDoc(doc(database, COLLECTION, ADMIN_DOC_ID));
+    return snap.exists() ? (snap.data()?.pinHash ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setCloudAdminPin(pinHash: string): void {
+  const database = getDb();
+  if (!database) return;
+  setDoc(doc(database, COLLECTION, ADMIN_DOC_ID), { pinHash, updatedAt: Date.now() }).catch(
+    e => console.warn('[CloudSync] setCloudAdminPin failed:', e),
+  );
 }

@@ -134,6 +134,7 @@ export interface MonthlyPlan {
   goals: Goal[];
   note?: Note;
   milestones?: Milestone[];
+  observaciones?: string;
 }
 
 export interface AnnualPlan {

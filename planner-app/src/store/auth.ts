@@ -1,8 +1,7 @@
 const PIN_KEY = 'planner:auth:pin';
 const LOCKED_KEY = 'planner:auth:locked';
 
-function hashPin(pin: string): string {
-  // Simple hash — not cryptographic, just obfuscation for a local app
+export function hashPin(pin: string): string {
   let hash = 0;
   for (let i = 0; i < pin.length; i++) {
     hash = (hash << 5) - hash + pin.charCodeAt(i);
