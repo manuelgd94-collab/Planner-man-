@@ -370,10 +370,10 @@ export function StatsPage() {
 
   return (
     <div className="h-full overflow-y-auto bg-surface-secondary/30">
-      <div className="max-w-[1300px] mx-auto p-5 space-y-4">
+      <div className="max-w-[1300px] mx-auto p-3 md:p-5 space-y-3 md:space-y-4">
 
         {/* ── Row 1: KPIs ── */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard
             label="Hoy"
             value={todayPct !== null ? `${todayPct}%` : '—'}
@@ -404,21 +404,21 @@ export function StatsPage() {
         </div>
 
         {/* ── Row 2: Cumplimiento 30d + Plan vs Reprog ── */}
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-8 bg-white border border-border rounded-xl p-4">
+        <div className="grid grid-cols-12 gap-3 md:gap-4">
+          <div className="col-span-12 lg:col-span-8 bg-white border border-border rounded-xl p-4">
             <h3 className="text-xs font-semibold text-text-primary mb-0.5">Cumplimiento diario — últimos 30 días</h3>
             <p className="text-[10px] text-text-muted mb-3">% tareas completadas por día</p>
             <DailyCompletionChart data={monthStats} />
           </div>
-          <div className="col-span-4">
+          <div className="col-span-12 lg:col-span-4">
             <PlannedVsRescheduledChart />
           </div>
         </div>
 
         {/* ── Row 3: Semana actual + Tendencia semanal ── */}
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-12 gap-3 md:gap-4">
           {/* 7-day detail */}
-          <div className="col-span-5 bg-white border border-border rounded-xl p-4">
+          <div className="col-span-12 lg:col-span-5 bg-white border border-border rounded-xl p-4">
             <h3 className="text-xs font-semibold text-text-primary mb-3">Semana actual — detalle por día</h3>
             <div className="space-y-1.5">
               {weekStats.map(({ date, total, completed, unplannedDone }) => {
@@ -443,7 +443,7 @@ export function StatsPage() {
           </div>
 
           {/* 8-week trend */}
-          <div className="col-span-7 bg-white border border-border rounded-xl p-4">
+          <div className="col-span-12 lg:col-span-7 bg-white border border-border rounded-xl p-4">
             <h3 className="text-xs font-semibold text-text-primary mb-0.5">Tendencia semanal — últimas 8 semanas</h3>
             <p className="text-[10px] text-text-muted mb-3">% cumplimiento agregado por semana</p>
             <WeeklyTrendChart />
@@ -456,10 +456,10 @@ export function StatsPage() {
         </div>
 
         {/* ── Row 4: Hábitos + Salud operacional ── */}
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-12 gap-3 md:gap-4">
           {/* Hábitos */}
           {habitStats.length > 0 && (
-            <div className="col-span-5 bg-white border border-border rounded-xl p-4">
+            <div className="col-span-12 lg:col-span-5 bg-white border border-border rounded-xl p-4">
               <h3 className="text-xs font-semibold text-text-primary mb-3">Hábitos — semana actual</h3>
               <div className="space-y-2.5">
                 {habitStats.map(({ habit, doneCount, pct, streak }) => (
@@ -487,7 +487,7 @@ export function StatsPage() {
           )}
 
           {/* Salud operacional */}
-          <div className={clsx('bg-white border border-border rounded-xl p-4', habitStats.length > 0 ? 'col-span-7' : 'col-span-12')}>
+          <div className={clsx('bg-white border border-border rounded-xl p-4', habitStats.length > 0 ? 'col-span-12 lg:col-span-7' : 'col-span-12')}>
             <h3 className="text-xs font-semibold text-text-primary mb-0.5">Salud operacional — últimas 8 semanas</h3>
             <p className="text-[10px] text-text-muted mb-3">Emergencias y pendientes arrastrados · indica ruido no planificado</p>
             <OperationalHealthChart />

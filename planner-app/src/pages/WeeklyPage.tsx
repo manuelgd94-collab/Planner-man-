@@ -120,7 +120,7 @@ export function WeeklyPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-[1400px] mx-auto p-6 space-y-4">
+      <div className="max-w-[1400px] mx-auto p-3 md:p-6 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-xs text-text-muted">{weekLabel} · Haz clic en un día para editarlo</p>
           <button
@@ -133,7 +133,7 @@ export function WeeklyPage() {
         </div>
 
         {/* Note boxes */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Objetivos semanales */}
           <div className="border rounded-xl overflow-hidden border-green-400 flex flex-col">
             <div className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-center bg-green-700 text-white flex-shrink-0">
@@ -180,16 +180,18 @@ export function WeeklyPage() {
           </div>
         </div>
 
-        {/* 7-day grid */}
-        <div className="grid grid-cols-7 gap-3">
-          {weekDays.map((day, i) => (
-            <WeekDayColumn
-              key={day.toISOString()}
-              date={day}
-              plan={plans[i]}
-              onSelectDay={d => { dispatch({ type: 'SET_DATE', date: d }); dispatch({ type: 'SET_VIEW', view: 'diario' }); }}
-            />
-          ))}
+        {/* 7-day grid — scrollable horizontally on mobile */}
+        <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
+          <div className="grid grid-cols-7 gap-2 md:gap-3 min-w-[560px] md:min-w-0">
+            {weekDays.map((day, i) => (
+              <WeekDayColumn
+                key={day.toISOString()}
+                date={day}
+                plan={plans[i]}
+                onSelectDay={d => { dispatch({ type: 'SET_DATE', date: d }); dispatch({ type: 'SET_VIEW', view: 'diario' }); }}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Retrospectiva */}
@@ -197,7 +199,7 @@ export function WeeklyPage() {
           <div className="px-4 py-2.5 bg-teal-700 text-white text-xs font-bold uppercase tracking-wide text-center">
             Retrospectiva de la semana
           </div>
-          <div className="grid grid-cols-3 divide-x divide-border p-0">
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border p-0">
             {(['logros', 'mejoras', 'aprendizajes'] as const).map((field) => {
               const labels = { logros: '¿Qué funcionó bien?', mejoras: '¿Qué mejorar?', aprendizajes: '¿Qué aprendí?' };
               return (
@@ -242,7 +244,7 @@ export function WeeklyPage() {
                   )}
                 </div>
               </div>
-              <div className="p-4 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3 lg:grid-cols-4">
+              <div className="p-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {overdueTasks.map(group => (
                   <div key={group.date}>
                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1.5">
