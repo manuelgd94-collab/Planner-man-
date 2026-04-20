@@ -4,7 +4,7 @@ import { PlannerProvider, usePlanner } from './store/PlannerContext';
 import { AppShell } from './components/layout/AppShell';
 import { PinModal } from './components/auth/PinModal';
 import { hasPin, setLocked } from './store/auth';
-import { cloudSyncToLocal, isCloudEnabled } from './store/cloudSync';
+import { cloudSyncToLocal, cloudUploadAll, needsBulkUpload, isCloudEnabled } from './store/cloudSync';
 
 function LockScreen() {
   const { state, dispatch } = usePlanner();
@@ -94,17 +94,25 @@ function KeyboardShortcuts() {
 
 function App() {
   const [synced, setSynced] = useState(!isCloudEnabled());
+  const [syncMsg, setSyncMsg] = useState('Sincronizando datos…');
 
   useEffect(() => {
     if (!isCloudEnabled()) return;
-    cloudSyncToLocal().finally(() => setSynced(true));
+    // Owner's PC (has PIN): upload all historical data to Firestore the first time
+    if (hasPin() && needsBulkUpload()) {
+      setSyncMsg('Subiendo historial a la nube… (solo esta vez)');
+      cloudUploadAll().finally(() => setSynced(true));
+    } else {
+      // Readers and owner after first upload: pull from Firestore
+      cloudSyncToLocal().finally(() => setSynced(true));
+    }
   }, []);
 
   if (!synced) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-white">
         <RefreshCw size={28} className="text-gray-400 animate-spin" />
-        <p className="text-sm text-text-secondary">Sincronizando datos…</p>
+        <p className="text-sm text-text-secondary">{syncMsg}</p>
       </div>
     );
   }
