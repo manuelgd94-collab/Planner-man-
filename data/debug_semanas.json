@@ -1,0 +1,410 @@
+[
+  {
+    "semana": 16,
+    "año": 2026,
+    "fecha_inicio": "2026-04-16",
+    "objetivos": [
+      "Crear programas T-2 de todas las áreas",
+      "Contingencias Puerto-Pipeline",
+      "Revisión Backlog",
+      "Revisar Polines correa 26",
+      "Repuestos Shiploader - Matriz intervención",
+      "Planilla de Francisco Cofré"
+    ],
+    "pendientes": [
+      "Valvulas Pinch filtros prensas",
+      "Compra pinturas spray color amarillo, azul y plata",
+      "Revisar llegada SKU 1329668"
+    ],
+    "emergencias": [
+      "Traslado válvula 18 y actuador por falla cierre",
+      "Hoja raspador primario feeder 501",
+      "Actuador EA25 GF+ amenaza detención filtros"
+    ],
+    "dias": [
+      {
+        "fecha": "2026-04-16",
+        "dia": "jueves",
+        "tareas": [
+          {
+            "texto": "Reunión Puerto diaria",
+            "hecho": true,
+            "cancelada": false,
+            "status": "completada"
+          },
+          {
+            "texto": "Reunión Pipeline diaria",
+            "hecho": false,
+            "cancelada": true,
+            "status": "cancelada"
+          },
+          {
+            "texto": "Adherencia diaria y novedades",
+            "hecho": true,
+            "cancelada": false,
+            "status": "completada"
+          },
+          {
+            "texto": "Reunion diaria inputs detenciones",
+            "hecho": true,
+            "cancelada": false,
+            "status": "completada"
+          },
+          {
+            "texto": "Leer correos",
+            "hecho": true,
+            "cancelada": false,
+            "status": "completada"
+          },
+          {
+            "texto": "Check inn Turno A",
+            "hecho": true,
+            "cancelada": false,
+            "status": "completada"
+          },
+          {
+            "texto": "Crear formato adherencia diaria",
+            "hecho": true,
+            "cancelada": false,
+            "status": "completada"
+          },
+          {
+            "texto": "Descarga T-2 Mecánicos Puerto Desaladora",
+            "hecho": false,
+            "cancelada": true,
+            "status": "cancelada"
+          }
+        ]
+      },
+      {
+        "fecha": "2026-04-17",
+        "dia": "viernes",
+        "tareas": [
+          {
+            "texto": "Adherencia diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunión Puerto diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunión Pipeline diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunion diaria inputs",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Armado programa preliminar Puerto área seca",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Armado programa preliminar Puerto desaladora",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Armado programa preliminar Moncon",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Armado programa preliminar Lubricación",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          }
+        ]
+      },
+      {
+        "fecha": "2026-04-18",
+        "dia": "sábado",
+        "tareas": [
+          {
+            "texto": "Reunión Puerto diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunión Pipeline diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Adherencia diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunion diaria inputs",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Revisión actividades en terreno Puerto",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Revisión actividades en terreno Pipeline",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Revisión programa preliminar puerto área seca",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Revisión programa preliminar puerto desaladora",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          }
+        ]
+      },
+      {
+        "fecha": "2026-04-19",
+        "dia": "domingo",
+        "tareas": [
+          {
+            "texto": "Reunión Puerto diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunión Pipeline diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Adherencia diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunion diaria inputs",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Revisión listado de repuestos en bodega QB004",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "revisar repuestos faltantes",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Armar listado solicitudes operacionales Puerto-Pipeline",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Revisión solicitudes operacionales Puerto",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          }
+        ]
+      },
+      {
+        "fecha": "2026-04-20",
+        "dia": "lunes",
+        "tareas": [
+          {
+            "texto": "Reunión Puerto diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunión Pipeline diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Adherencia diaria y novedades",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunion diaria inputs WR estado 10",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Envio programa para revisión a jefe planificación",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Formalizar solicitud SSGG (antes de 12 pm)",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Formalizar solicitud Shiploader.",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Actualizar programas según solicitudes de jefatura",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          }
+        ]
+      },
+      {
+        "fecha": "2026-04-21",
+        "dia": "martes",
+        "tareas": [
+          {
+            "texto": "Reunión Puerto diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunión Pipeline diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Adherencia diaria y novedades",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunion diaria inputs WR estado 10",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunión T-2 Puerto",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunión T-2 Pipeline",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Minuta y congelamiento programa semanal",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "entrega a confiabilidad analisis MP",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          }
+        ]
+      },
+      {
+        "fecha": "2026-04-22",
+        "dia": "miércoles",
+        "tareas": [
+          {
+            "texto": "Reunión Puerto diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunión Pipeline diaria",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Adherencia diaria y novedades",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Reunion diaria inputs WR estado 10",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Programar en Scheduler Pipeline",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Revisión programa T-1 Puerto, repuestos en stock en sistema y Ots estado 55",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Revisión programa T-1 Pipeline, repuestos en stock en sistema y ots estado 55",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          },
+          {
+            "texto": "Envio de programa T-1 a la organización Puerto",
+            "hecho": false,
+            "cancelada": false,
+            "status": "pendiente"
+          }
+        ]
+      }
+    ],
+    "notas": [
+      "Semana con alta carga operativa en Puerto y Pipeline",
+      "Pendiente confirmar fechas de intervención con jefatura",
+      "Coordinar con bodega entregas urgentes SKU 1329668"
+    ]
+  }
+]

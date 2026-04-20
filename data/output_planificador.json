@@ -1,0 +1,779 @@
+{
+  "planner:v1:daily:2026-04-16": {
+    "date": "2026-04-16",
+    "tasks": [
+      {
+        "id": "28e3149c-907a-45ab-b949-30b65d1b6d59",
+        "title": "Reunión Puerto diaria",
+        "priority": "media",
+        "status": "completada",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z",
+        "completedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "fe5879ec-e4d8-4ec1-ab95-00a1da4c3635",
+        "title": "Reunión Pipeline diaria",
+        "priority": "media",
+        "status": "cancelada",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "33feb743-df49-44e1-9b9f-16ca036912d6",
+        "title": "Adherencia diaria y novedades",
+        "priority": "media",
+        "status": "completada",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z",
+        "completedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "0fdd77ba-d1ba-4cfe-8c03-a0b97fc26f5c",
+        "title": "Reunion diaria inputs detenciones",
+        "priority": "media",
+        "status": "completada",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z",
+        "completedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "9a991cec-32b4-4941-b1fa-b72f50622026",
+        "title": "Leer correos",
+        "priority": "media",
+        "status": "completada",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z",
+        "completedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "b3d8d01f-72e8-4c75-8efa-9ff09da07fa9",
+        "title": "Check inn Turno A",
+        "priority": "media",
+        "status": "completada",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z",
+        "completedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "f7a2cad9-c513-40c2-b80e-b5ffdcf88506",
+        "title": "Crear formato adherencia diaria",
+        "priority": "media",
+        "status": "completada",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z",
+        "completedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "90241832-d600-49ca-9369-e030df15dc68",
+        "title": "Descarga T-2 Mecánicos Puerto Desaladora",
+        "priority": "media",
+        "status": "cancelada",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "6862d1df-3887-47ee-b906-be0c651aa031",
+        "title": "Valvulas Pinch filtros prensas",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "73d03013-3a3e-49cc-bc7b-0d23780015aa",
+        "title": "Compra pinturas spray color amarillo, azul y plata",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "5547a028-9a40-450e-a3f7-7dd0847aca4e",
+        "title": "Revisar llegada SKU 1329668",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "0867a1d4-91ea-41c2-b9d8-3cb97b5123eb",
+        "title": "Traslado válvula 18 y actuador por falla cierre",
+        "priority": "alta",
+        "status": "pendiente",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "29b448de-40d8-4238-a547-59d010a566e0",
+        "title": "Hoja raspador primario feeder 501",
+        "priority": "alta",
+        "status": "pendiente",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "6915a62d-3e42-4da5-932b-f8664ea9a48b",
+        "title": "Actuador EA25 GF+ amenaza detención filtros",
+        "priority": "alta",
+        "status": "pendiente",
+        "dueDate": "2026-04-16",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      }
+    ],
+    "habitEntries": [],
+    "note": {
+      "id": "b6e53157-aa68-49db-a98f-20d4171a920c",
+      "scopeType": "daily",
+      "scopeKey": "2026-04-16",
+      "blocks": [
+        {
+          "id": "eb11ae59-136e-4dbc-8f1e-24b5ec610148",
+          "type": "paragraph",
+          "content": "Semana con alta carga operativa en Puerto y Pipeline",
+          "order": 0
+        },
+        {
+          "id": "9c43403a-5f2d-4d28-a9b6-945737ddfcc1",
+          "type": "paragraph",
+          "content": "Pendiente confirmar fechas de intervención con jefatura",
+          "order": 1
+        },
+        {
+          "id": "b7dddf1a-3056-4089-8958-2e66d7b8a33e",
+          "type": "paragraph",
+          "content": "Coordinar con bodega entregas urgentes SKU 1329668",
+          "order": 2
+        }
+      ],
+      "updatedAt": "2026-04-17T13:41:13.000Z"
+    }
+  },
+  "planner:v1:daily:2026-04-17": {
+    "date": "2026-04-17",
+    "tasks": [
+      {
+        "id": "dcdd292a-a41c-48ca-b431-69a88f4c233e",
+        "title": "Adherencia diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-17",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "80ac8268-fa37-4932-a1b3-a3f9baa9a91d",
+        "title": "Reunión Puerto diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-17",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "ea001734-ed22-45c6-baa6-751ce17a2d46",
+        "title": "Reunión Pipeline diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-17",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "7e4e40d4-62da-4d5d-b4eb-6d0c5932bf9c",
+        "title": "Reunion diaria inputs",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-17",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "d766485a-284d-4d08-b081-030396403168",
+        "title": "Armado programa preliminar Puerto área seca",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-17",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "3d719ad7-5d8f-490d-9d32-654bea570697",
+        "title": "Armado programa preliminar Puerto desaladora",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-17",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "c74fcd26-ddf4-4b28-b710-1244491e1b83",
+        "title": "Armado programa preliminar Moncon",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-17",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "869be46f-245c-4842-9f77-1644af058b5a",
+        "title": "Armado programa preliminar Lubricación",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-17",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      }
+    ],
+    "habitEntries": []
+  },
+  "planner:v1:daily:2026-04-18": {
+    "date": "2026-04-18",
+    "tasks": [
+      {
+        "id": "f4b62710-9aa1-4478-8160-176a2333c190",
+        "title": "Reunión Puerto diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-18",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "a0c560f9-3847-4e0b-b7e5-162de7d04dfa",
+        "title": "Reunión Pipeline diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-18",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "2c41d875-085d-419a-b7a2-8174cc2065c6",
+        "title": "Adherencia diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-18",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "58149b4a-28ac-486d-b44d-a52c81c42d98",
+        "title": "Reunion diaria inputs",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-18",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "7a4cc56f-53c2-4d8b-ade6-0476f951ddc4",
+        "title": "Revisión actividades en terreno Puerto",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-18",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "7327cf98-1081-4d4d-ba40-886a0eb01108",
+        "title": "Revisión actividades en terreno Pipeline",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-18",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "f9974d7d-fd21-4e0f-8112-73a217811c38",
+        "title": "Revisión programa preliminar puerto área seca",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-18",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "a4061621-07f2-40c2-b4a9-4d425f0f78c4",
+        "title": "Revisión programa preliminar puerto desaladora",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-18",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      }
+    ],
+    "habitEntries": []
+  },
+  "planner:v1:daily:2026-04-19": {
+    "date": "2026-04-19",
+    "tasks": [
+      {
+        "id": "0e21f38b-a108-4846-a6c3-b7cc93f4625f",
+        "title": "Reunión Puerto diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-19",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "d26851d2-c9c9-4181-ac9e-76d7395b3f79",
+        "title": "Reunión Pipeline diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-19",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "56f4463b-0f07-48ca-9a77-58ae0d063766",
+        "title": "Adherencia diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-19",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "fae5f4cc-2213-4c0c-b410-b540415d068e",
+        "title": "Reunion diaria inputs",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-19",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "62e22230-0e79-4cc2-a84e-9fa4536ba3ac",
+        "title": "Revisión listado de repuestos en bodega QB004",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-19",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "7dc77368-ec81-4144-96ac-f06d541d2cf8",
+        "title": "revisar repuestos faltantes",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-19",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "0d6b4638-dfbd-4337-9237-63b22a164426",
+        "title": "Armar listado solicitudes operacionales Puerto-Pipeline",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-19",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "10de5b23-669d-46ed-8637-a97347ed746a",
+        "title": "Revisión solicitudes operacionales Puerto",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-19",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      }
+    ],
+    "habitEntries": []
+  },
+  "planner:v1:daily:2026-04-20": {
+    "date": "2026-04-20",
+    "tasks": [
+      {
+        "id": "90be1552-84c5-4c12-be85-b80f1f24a8b9",
+        "title": "Reunión Puerto diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-20",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "6b05119a-3e0a-43b9-bf6a-f4ad3ed0cfa0",
+        "title": "Reunión Pipeline diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-20",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "a5da8985-c8aa-4c08-937d-5732d96670f8",
+        "title": "Adherencia diaria y novedades",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-20",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "b5c6b394-739e-4fda-bf84-86d97f13a05b",
+        "title": "Reunion diaria inputs WR estado 10",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-20",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "ebc94f55-9ac2-4e33-986d-3285879579dd",
+        "title": "Envio programa para revisión a jefe planificación",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-20",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "8ac8538a-a054-48ce-a48b-4fb34de072a7",
+        "title": "Formalizar solicitud SSGG (antes de 12 pm)",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-20",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "9745ee5a-29c0-46fe-a829-dc686f29de21",
+        "title": "Formalizar solicitud Shiploader.",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-20",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "014f9374-7670-472e-864d-5a285140fb03",
+        "title": "Actualizar programas según solicitudes de jefatura",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-20",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      }
+    ],
+    "habitEntries": []
+  },
+  "planner:v1:daily:2026-04-21": {
+    "date": "2026-04-21",
+    "tasks": [
+      {
+        "id": "83c59de8-5d19-4e77-aa80-056bf0ae61ec",
+        "title": "Reunión Puerto diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-21",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "5bb97b7a-54ec-4765-9898-e1215fd30572",
+        "title": "Reunión Pipeline diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-21",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "a9964f53-58f9-4307-a51f-e6dd21c71d2b",
+        "title": "Adherencia diaria y novedades",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-21",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "531b9489-7d84-4f16-a076-381284272fa1",
+        "title": "Reunion diaria inputs WR estado 10",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-21",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "d2a547fc-aa8b-412e-be52-38adbd0d23fe",
+        "title": "Reunión T-2 Puerto",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-21",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "047c983c-9b77-491c-ab76-110b68b4d97c",
+        "title": "Reunión T-2 Pipeline",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-21",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "2a9cfe9a-ea4c-4692-aff8-f4b8e4f2c4a1",
+        "title": "Minuta y congelamiento programa semanal",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-21",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "08699297-6f9b-481d-8cda-2d51900c6afb",
+        "title": "entrega a confiabilidad analisis MP",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-21",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      }
+    ],
+    "habitEntries": []
+  },
+  "planner:v1:daily:2026-04-22": {
+    "date": "2026-04-22",
+    "tasks": [
+      {
+        "id": "d0573f23-0c9c-4788-93a9-e075df79eb2b",
+        "title": "Reunión Puerto diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-22",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "b1632c32-6df3-461f-9dd7-f8317c28c097",
+        "title": "Reunión Pipeline diaria",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-22",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "80341421-f914-44c7-b6bf-6962e8e09064",
+        "title": "Adherencia diaria y novedades",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-22",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "ec02df4a-2723-44ea-a2aa-1966ba02bf13",
+        "title": "Reunion diaria inputs WR estado 10",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-22",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "60c6e627-25c2-4b43-a30c-4ad90485ade9",
+        "title": "Programar en Scheduler Pipeline",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-22",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "ac98c52e-0f98-4ca4-a9a3-486d1652bd2d",
+        "title": "Revisión programa T-1 Puerto, repuestos en stock en sistema y Ots estado 55",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-22",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "9bc0a6dc-606c-4520-b8de-c1ea5b8a8207",
+        "title": "Revisión programa T-1 Pipeline, repuestos en stock en sistema y ots estado 55",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-22",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "8ee90b6d-8a92-4c0e-8436-51073973c90f",
+        "title": "Envio de programa T-1 a la organización Puerto",
+        "priority": "media",
+        "status": "pendiente",
+        "dueDate": "2026-04-22",
+        "tags": [],
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      }
+    ],
+    "habitEntries": []
+  },
+  "planner:v1:monthly:2026-04": {
+    "yearMonth": "2026-04",
+    "goals": [
+      {
+        "id": "9337d6fc-7228-4b9d-99c9-26de7e2e6693",
+        "title": "Crear programas T-2 de todas las áreas",
+        "status": "no_iniciada",
+        "scope": "mensual",
+        "year": 2026,
+        "month": 4,
+        "progress": 0,
+        "category": "Trabajo",
+        "color": "#6366f1",
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "91a99c80-8a74-48f8-90fb-f533f477f28c",
+        "title": "Contingencias Puerto-Pipeline",
+        "status": "no_iniciada",
+        "scope": "mensual",
+        "year": 2026,
+        "month": 4,
+        "progress": 0,
+        "category": "Trabajo",
+        "color": "#22c55e",
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "133d1979-a836-4663-aa0d-65c6ac494db3",
+        "title": "Revisión Backlog",
+        "status": "no_iniciada",
+        "scope": "mensual",
+        "year": 2026,
+        "month": 4,
+        "progress": 0,
+        "category": "Trabajo",
+        "color": "#f59e0b",
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "8194fe59-f37a-4727-8c6b-36bffb89c4dd",
+        "title": "Revisar Polines correa 26",
+        "status": "no_iniciada",
+        "scope": "mensual",
+        "year": 2026,
+        "month": 4,
+        "progress": 0,
+        "category": "Trabajo",
+        "color": "#ef4444",
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "54ab0c54-a67e-48f2-8083-fd7175997c5b",
+        "title": "Repuestos Shiploader - Matriz intervención",
+        "status": "no_iniciada",
+        "scope": "mensual",
+        "year": 2026,
+        "month": 4,
+        "progress": 0,
+        "category": "Trabajo",
+        "color": "#8b5cf6",
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      },
+      {
+        "id": "baefbb03-21b0-4b75-946b-91a938ed351f",
+        "title": "Planilla de Francisco Cofré",
+        "status": "no_iniciada",
+        "scope": "mensual",
+        "year": 2026,
+        "month": 4,
+        "progress": 0,
+        "category": "Trabajo",
+        "color": "#06b6d4",
+        "createdAt": "2026-04-17T13:41:13.000Z",
+        "updatedAt": "2026-04-17T13:41:13.000Z"
+      }
+    ]
+  }
+}
