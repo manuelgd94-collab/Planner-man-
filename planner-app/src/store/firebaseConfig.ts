@@ -8,10 +8,10 @@
 // 5. Copy your config values below, replacing each "YOUR_..." placeholder
 // ─────────────────────────────────────────────────────────────────────────────
 export const firebaseConfig = {
-  apiKey:            'YOUR_API_KEY',
-  authDomain:        'YOUR_PROJECT_ID.firebaseapp.com',
-  projectId:         'YOUR_PROJECT_ID',
-  storageBucket:     'YOUR_PROJECT_ID.appspot.com',
-  messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-  appId:             'YOUR_APP_ID',
+  apiKey:            'AIzaSyAGp2OguEssHuZSZgCETAJYAqJnxLi8sgw',
+  authDomain:        'planner-turno.firebaseapp.com',
+  projectId:         'planner-turno',
+  storageBucket:     'planner-turno.firebasestorage.app',
+  messagingSenderId: '251701152805',
+  appId:             '1:251701152805:web:d737220c244e1579ab03cc',
 };
