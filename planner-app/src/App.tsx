@@ -139,12 +139,23 @@ function App() {
         setSyncMsg('Cargando tus datos…');
         try {
           await cloudSyncToLocal();
+        } catch (e) {
+          console.warn('[App] cloudSyncToLocal failed:', e);
         } finally {
           setSyncing(false);
         }
-        // Fetch profile from Firestore
+        // Fetch profile — retry a few times in case signUp is still writing it
         const { getProfile } = await import('./store/firebaseAuth');
-        const profile = await getProfile(fbUser.uid);
+        let profile = null;
+        for (let i = 0; i < 5; i++) {
+          try {
+            profile = await getProfile(fbUser.uid);
+            if (profile) break;
+          } catch (e) {
+            console.warn('[App] getProfile attempt', i + 1, 'failed:', e);
+          }
+          await new Promise(r => setTimeout(r, 600));
+        }
         setCurrentUser(profile);
       } else {
         // Signed out — clear local data and reset user

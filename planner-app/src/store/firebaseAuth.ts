@@ -60,11 +60,17 @@ export async function signIn(email: string, password: string): Promise<UserProfi
 export async function signUp(email: string, password: string, name: string): Promise<UserProfile> {
   if (!configured) throw new Error('Firebase no configurado');
 
-  // Step 1: create Firebase Auth account (SDK is now authenticated)
-  const cred = await createUserWithEmailAndPassword(getAuth(getApp()), email.trim(), password);
-  const db = getFirestore(getApp());
+  let cred;
+  try {
+    console.log('[signUp] 1/3 Creating Firebase Auth account...');
+    cred = await createUserWithEmailAndPassword(getAuth(getApp()), email.trim(), password);
+    console.log('[signUp] 1/3 OK — uid:', cred.user.uid);
+  } catch (e) {
+    console.error('[signUp] 1/3 FAILED (createUserWithEmailAndPassword):', e);
+    throw e;
+  }
 
-  // Step 2: write profile as 'user' first (auth is confirmed at this point)
+  const db = getFirestore(getApp());
   const profile: UserProfile = {
     uid: cred.user.uid,
     name: name.trim(),
@@ -72,14 +78,28 @@ export async function signUp(email: string, password: string, name: string): Pro
     role: 'user',
     createdAt: new Date().toISOString(),
   };
-  await setDoc(doc(db, 'user_profiles', cred.user.uid), profile);
 
-  // Step 3: if this is the only profile, promote to admin
-  const snap = await getDocs(query(collection(db, 'user_profiles'), limit(2)));
-  if (snap.size === 1) {
-    const adminProfile: UserProfile = { ...profile, role: 'admin' };
-    await setDoc(doc(db, 'user_profiles', cred.user.uid), adminProfile);
-    return adminProfile;
+  try {
+    console.log('[signUp] 2/3 Writing profile to Firestore...');
+    await setDoc(doc(db, 'user_profiles', cred.user.uid), profile);
+    console.log('[signUp] 2/3 OK');
+  } catch (e) {
+    console.error('[signUp] 2/3 FAILED (setDoc user_profiles):', e);
+    throw new Error('Cuenta creada, pero falló la escritura a Firestore. Revisa las Reglas de Firestore en la Consola de Firebase.');
+  }
+
+  try {
+    console.log('[signUp] 3/3 Checking if first user...');
+    const snap = await getDocs(query(collection(db, 'user_profiles'), limit(2)));
+    console.log('[signUp] 3/3 OK — total profiles:', snap.size);
+    if (snap.size === 1) {
+      const adminProfile: UserProfile = { ...profile, role: 'admin' };
+      await setDoc(doc(db, 'user_profiles', cred.user.uid), adminProfile);
+      console.log('[signUp] Promoted to admin');
+      return adminProfile;
+    }
+  } catch (e) {
+    console.warn('[signUp] 3/3 admin check failed — continuing as user:', e);
   }
 
   return profile;
