@@ -56,25 +56,32 @@ export async function signIn(email: string, password: string): Promise<UserProfi
 }
 
 // First user to register becomes admin, the rest become 'user'.
-// Auth user is created first so all Firestore calls happen while authenticated.
+// Profile is written first (as 'user'), then promoted to admin if only one exists.
 export async function signUp(email: string, password: string, name: string): Promise<UserProfile> {
   if (!configured) throw new Error('Firebase no configurado');
 
-  // Create auth account first — SDK becomes authenticated immediately
+  // Step 1: create Firebase Auth account (SDK is now authenticated)
   const cred = await createUserWithEmailAndPassword(getAuth(getApp()), email.trim(), password);
-
-  // Now authenticated: check if this is the first profile
   const db = getFirestore(getApp());
-  const existing = await getDocs(query(collection(db, 'user_profiles'), limit(1)));
-  const role: 'admin' | 'user' = existing.empty ? 'admin' : 'user';
+
+  // Step 2: write profile as 'user' first (auth is confirmed at this point)
   const profile: UserProfile = {
     uid: cred.user.uid,
     name: name.trim(),
     email: email.trim().toLowerCase(),
-    role,
+    role: 'user',
     createdAt: new Date().toISOString(),
   };
   await setDoc(doc(db, 'user_profiles', cred.user.uid), profile);
+
+  // Step 3: if this is the only profile, promote to admin
+  const snap = await getDocs(query(collection(db, 'user_profiles'), limit(2)));
+  if (snap.size === 1) {
+    const adminProfile: UserProfile = { ...profile, role: 'admin' };
+    await setDoc(doc(db, 'user_profiles', cred.user.uid), adminProfile);
+    return adminProfile;
+  }
+
   return profile;
 }
 
