@@ -28,6 +28,7 @@ export function getItem<T>(key: string): T | null {
 export function setItem<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    localStorage.setItem(key + ':_ts', String(Date.now()));
     cloudSet(key, value);
   } catch {
     // storage full or unavailable

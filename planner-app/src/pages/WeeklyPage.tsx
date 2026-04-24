@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Clock, AlertCircle, CheckCircle2, FileText, Star, Plus, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { usePlanner } from '../store/PlannerContext';
@@ -58,21 +58,21 @@ export function WeeklyPage() {
   }, [weekDays]);
 
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan>(() => loadWeeklyPlan(weekStart));
-  const planRef = useRef<WeeklyPlan>(weeklyPlan);
-  planRef.current = weeklyPlan;
   const [newHito, setNewHito] = useState('');
 
   useEffect(() => {
-    const plan = loadWeeklyPlan(weekStart);
-    planRef.current = plan;
-    setWeeklyPlan(plan);
+    setWeeklyPlan(loadWeeklyPlan(weekStart));
   }, [weekStart]);
 
+  // Save whenever weeklyPlan changes (same pattern as PlannerContext)
+  useEffect(() => {
+    if (weeklyPlan.weekStart === weekStart) {
+      setItem(KEYS.weekly(weekStart), weeklyPlan);
+    }
+  }, [weeklyPlan, weekStart]);
+
   function persist(updater: (prev: WeeklyPlan) => WeeklyPlan) {
-    const updated = updater(planRef.current);
-    planRef.current = updated;
-    setWeeklyPlan(updated);
-    setItem(KEYS.weekly(weekStart), updated);
+    setWeeklyPlan(prev => updater(prev));
   }
 
   function updateGoals(goals: Goal[]) {

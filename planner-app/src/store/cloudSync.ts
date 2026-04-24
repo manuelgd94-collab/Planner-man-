@@ -93,8 +93,16 @@ export async function cloudSyncToLocal(): Promise<void> {
       const key = idToKey(docSnap.id);
       if (key === '__admin__') return;
       const val = docSnap.data()?.value;
+      const cloudTs: number = docSnap.data()?.updatedAt ?? 0;
       if (val !== undefined) {
-        try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* quota */ }
+        try {
+          const localTs = parseInt(localStorage.getItem(key + ':_ts') || '0', 10);
+          // Only overwrite local data if cloud version is newer
+          if (cloudTs >= localTs) {
+            localStorage.setItem(key, JSON.stringify(val));
+            localStorage.setItem(key + ':_ts', String(cloudTs));
+          }
+        } catch { /* quota */ }
       }
     });
   } catch (e) {
