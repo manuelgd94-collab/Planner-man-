@@ -100,12 +100,22 @@ export interface WeeklyItem {
   createdAt: string;
 }
 
+export interface WeeklyHito {
+  id: string;
+  title: string;
+  auto?: boolean; // auto-generated from a completed pendiente
+  createdAt: string;
+}
+
 export interface WeeklyPlan {
   weekStart: string;           // ISO date of Thursday
   goals: Goal[];               // weekly objectives with progress tracking
   pendientes: WeeklyItem[];    // obligations that carry over if unfinished
   emergencias: WeeklyItem[];   // urgent issues that arise during the shift
-  retrospectiva?: {
+  hitos?: WeeklyHito[];        // important milestones of the shift
+  desviaciones?: string;       // program deviations
+  oportunidades?: string;      // improvement opportunities
+  retrospectiva?: {            // kept for backwards compatibility
     logros: string;
     mejoras: string;
     aprendizajes: string;

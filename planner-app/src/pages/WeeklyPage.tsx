@@ -1,10 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Clock, AlertCircle, CheckCircle2, FileText } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle2, FileText, Star, Plus, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { usePlanner } from '../store/PlannerContext';
-import { getWeekDays, toISODate, formatDate, capitalizeFirst } from '../utils/dateUtils';
+import { getWeekDays, toISODate, formatDate, capitalizeFirst, getShiftWeekNumber } from '../utils/dateUtils';
 import { getItem, setItem, KEYS } from '../store/localStorage';
-import type { DailyPlan, WeeklyPlan, Goal, WeeklyItem } from '../types';
+import type { DailyPlan, WeeklyPlan, Goal, WeeklyItem, WeeklyHito } from '../types';
 import { WeekDayColumn } from '../components/weekly/WeekDayColumn';
 import { WeeklyGoals } from '../components/weekly/WeeklyGoals';
 import { WeeklyItemList, EmergenciaHeader } from '../components/weekly/WeeklyItemList';
@@ -32,9 +32,9 @@ function loadWeeklyPlan(weekStart: string): WeeklyPlan {
       goals: saved.goals ?? [],
       pendientes: migrateItems((saved as any).pendientes),
       emergencias: migrateItems((saved as any).emergencias),
+      hitos: saved.hitos ?? [],
     };
   }
-  // No plan yet — carry over uncompleted pendientes from previous week
   const prevDate = new Date(weekStart + 'T12:00:00');
   prevDate.setDate(prevDate.getDate() - 7);
   const prevPlan = getItem<WeeklyPlan>(KEYS.weekly(toISODate(prevDate)));
@@ -43,7 +43,7 @@ function loadWeeklyPlan(weekStart: string): WeeklyPlan {
         .filter(i => !i.completed)
         .map(i => ({ ...i, id: crypto.randomUUID(), carriedOver: true, createdAt: new Date().toISOString() }))
     : [];
-  return { weekStart, goals: [], pendientes: carryOver, emergencias: [] };
+  return { weekStart, goals: [], pendientes: carryOver, emergencias: [], hitos: [] };
 }
 
 export function WeeklyPage() {
@@ -51,35 +51,62 @@ export function WeeklyPage() {
   const [showReport, setShowReport] = useState(false);
   const weekDays = useMemo(() => getWeekDays(state.selectedDate), [state.selectedDate]);
   const weekStart = toISODate(weekDays[0]);
+  const weekNum = getShiftWeekNumber(weekDays[0]);
 
   const plans = useMemo(() => {
     return weekDays.map(day => getItem<DailyPlan>(KEYS.daily(toISODate(day))));
   }, [weekDays]);
 
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan>(() => loadWeeklyPlan(weekStart));
+  const [newHito, setNewHito] = useState('');
 
   useEffect(() => {
     setWeeklyPlan(loadWeeklyPlan(weekStart));
   }, [weekStart]);
 
-  function persist(updated: WeeklyPlan) {
-    setWeeklyPlan(updated);
-    setItem(KEYS.weekly(weekStart), updated);
+  // Fix: use functional update to avoid stale closures
+  function persist(updater: (prev: WeeklyPlan) => WeeklyPlan) {
+    setWeeklyPlan(prev => {
+      const updated = updater(prev);
+      setItem(KEYS.weekly(weekStart), updated);
+      return updated;
+    });
   }
 
   function updateGoals(goals: Goal[]) {
-    persist({ ...weeklyPlan, goals });
+    persist(prev => ({ ...prev, goals }));
   }
-
   function updatePendientes(pendientes: WeeklyItem[]) {
-    persist({ ...weeklyPlan, pendientes });
+    persist(prev => ({ ...prev, pendientes }));
   }
-
   function updateEmergencias(emergencias: WeeklyItem[]) {
-    persist({ ...weeklyPlan, emergencias });
+    persist(prev => ({ ...prev, emergencias }));
   }
 
-  // Past days of this week — both pending and completed-late tasks
+  // Auto-hitos: completed pendientes not yet in hitos list
+  const autoHitos = useMemo(() => {
+    const existingTitles = new Set((weeklyPlan.hitos ?? []).filter(h => h.auto).map(h => h.title));
+    return weeklyPlan.pendientes
+      .filter(p => p.completed && !existingTitles.has(p.title))
+      .map(p => ({ id: `auto_${p.id}`, title: p.title, auto: true, createdAt: p.createdAt }));
+  }, [weeklyPlan.pendientes, weeklyPlan.hitos]);
+
+  const allHitos: WeeklyHito[] = [...autoHitos, ...(weeklyPlan.hitos ?? []).filter(h => !h.auto)];
+
+  function addHito() {
+    if (!newHito.trim()) return;
+    persist(prev => ({
+      ...prev,
+      hitos: [...(prev.hitos ?? []), { id: crypto.randomUUID(), title: newHito.trim(), auto: false, createdAt: new Date().toISOString() }],
+    }));
+    setNewHito('');
+  }
+
+  function removeHito(id: string) {
+    persist(prev => ({ ...prev, hitos: (prev.hitos ?? []).filter(h => h.id !== id) }));
+  }
+
+  // Overdue tasks
   const overdueTasks = useMemo(() => {
     const todayISO = toISODate(new Date());
     type TaskEntry = { id: string; title: string; priority: string; completedLate: boolean };
@@ -89,27 +116,21 @@ export function WeeklyPage() {
       if (iso >= todayISO) continue;
       const plan = getItem<DailyPlan>(KEYS.daily(iso));
       const all = plan?.tasks ?? [];
-      const pending   = all.filter(t => t.status === 'pendiente' || t.status === 'en_progreso');
-      const doneLate  = all.filter(t => t.status === 'completada');
-      // reprogramada tasks excluded — they were intentionally moved to another day
       const tasks: TaskEntry[] = [
-        ...pending.map(t => ({ id: t.id, title: t.title, priority: t.priority, completedLate: false })),
-        ...doneLate.map(t => ({ id: t.id, title: t.title, priority: t.priority, completedLate: true })),
+        ...all.filter(t => t.status === 'pendiente' || t.status === 'en_progreso')
+             .map(t => ({ id: t.id, title: t.title, priority: t.priority, completedLate: false })),
+        ...all.filter(t => t.status === 'completada')
+             .map(t => ({ id: t.id, title: t.title, priority: t.priority, completedLate: true })),
       ];
       if (tasks.length > 0) {
-        groups.push({
-          date: iso,
-          label: capitalizeFirst(formatDate(new Date(iso + 'T12:00:00'), 'EEEE d MMM')),
-          tasks,
-        });
+        groups.push({ date: iso, label: capitalizeFirst(formatDate(new Date(iso + 'T12:00:00'), 'EEEE d MMM')), tasks });
       }
     }
     return groups;
   }, [weekDays]);
 
   const weekLabel = useMemo(() => {
-    const first = weekDays[0];
-    const last = weekDays[6];
+    const first = weekDays[0], last = weekDays[6];
     if (first.getMonth() === last.getMonth()) {
       return `${first.getDate()} – ${last.getDate()} de ${capitalizeFirst(formatDate(first, 'MMMM yyyy'))}`;
     }
@@ -121,8 +142,10 @@ export function WeeklyPage() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-[1400px] mx-auto p-3 md:p-6 space-y-4">
+
+        {/* Header */}
         <div className="flex items-center justify-between">
-          <p className="text-xs text-text-muted">{weekLabel} · Haz clic en un día para editarlo</p>
+          <p className="text-xs text-text-muted">{weekLabel} · W{weekNum} · Haz clic en un día para editarlo</p>
           <button
             onClick={() => setShowReport(true)}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition-colors"
@@ -132,55 +155,37 @@ export function WeeklyPage() {
           </button>
         </div>
 
-        {/* Note boxes */}
+        {/* Top boxes: Objetivos / Pendientes / Emergencias */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* Objetivos semanales */}
           <div className="border rounded-xl overflow-hidden border-green-400 flex flex-col">
             <div className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-center bg-green-700 text-white flex-shrink-0">
               Objetivos semanales
             </div>
             <div className="flex-1 p-2 bg-white min-h-[130px]">
-              <WeeklyGoals
-                goals={weeklyPlan.goals}
-                weekStart={weekStart}
-                readOnly={isReadOnly}
-                onChange={updateGoals}
-              />
+              <WeeklyGoals goals={weeklyPlan.goals} weekStart={weekStart} readOnly={isReadOnly} onChange={updateGoals} />
             </div>
           </div>
 
-          {/* Elementos pendientes */}
           <div className="border rounded-xl overflow-hidden border-green-400 flex flex-col">
             <div className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-center bg-green-700 text-white flex-shrink-0">
               Elementos pendientes
             </div>
             <div className="flex-1 p-2 bg-white min-h-[130px]">
-              <WeeklyItemList
-                items={weeklyPlan.pendientes}
-                variant="pendientes"
-                readOnly={isReadOnly}
-                onChange={updatePendientes}
-              />
+              <WeeklyItemList items={weeklyPlan.pendientes} variant="pendientes" readOnly={isReadOnly} onChange={updatePendientes} />
             </div>
           </div>
 
-          {/* Emergencias */}
           <div className="border rounded-xl overflow-hidden border-red-400 flex flex-col">
             <div className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-center bg-red-600 text-white flex-shrink-0">
               <EmergenciaHeader />
             </div>
             <div className="flex-1 p-2 bg-white min-h-[130px]">
-              <WeeklyItemList
-                items={weeklyPlan.emergencias}
-                variant="emergencias"
-                readOnly={isReadOnly}
-                onChange={updateEmergencias}
-              />
+              <WeeklyItemList items={weeklyPlan.emergencias} variant="emergencias" readOnly={isReadOnly} onChange={updateEmergencias} />
             </div>
           </div>
         </div>
 
-        {/* 7-day grid — scrollable horizontally on mobile */}
+        {/* 7-day grid */}
         <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
           <div className="grid grid-cols-7 gap-2 md:gap-3 min-w-[560px] md:min-w-0">
             {weekDays.map((day, i) => (
@@ -194,40 +199,91 @@ export function WeeklyPage() {
           </div>
         </div>
 
-        {/* Retrospectiva */}
-        <div className="border border-teal-300 rounded-xl bg-white overflow-hidden">
-          <div className="px-4 py-2.5 bg-teal-700 text-white text-xs font-bold uppercase tracking-wide text-center">
-            Retrospectiva de la semana
+        {/* ── Cierre de turno ──────────────────────────────────────────────── */}
+        <div className="border border-indigo-300 rounded-xl bg-white overflow-hidden">
+          <div className="px-4 py-2.5 bg-indigo-700 text-white text-xs font-bold uppercase tracking-wide text-center">
+            Cierre de turno
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border p-0">
-            {(['logros', 'mejoras', 'aprendizajes'] as const).map((field) => {
-              const labels = { logros: '¿Qué funcionó bien?', mejoras: '¿Qué mejorar?', aprendizajes: '¿Qué aprendí?' };
-              return (
-                <div key={field} className="p-3 flex flex-col gap-1">
-                  <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wide">{labels[field]}</label>
-                  <textarea
-                    className="flex-1 text-xs text-text-primary resize-none focus:outline-none bg-transparent leading-relaxed min-h-[70px] placeholder:text-text-muted"
-                    value={weeklyPlan.retrospectiva?.[field] ?? ''}
-                    onChange={e => persist({
-                      ...weeklyPlan,
-                      retrospectiva: { logros: '', mejoras: '', aprendizajes: '', ...weeklyPlan.retrospectiva, [field]: e.target.value }
-                    })}
-                    readOnly={isReadOnly}
-                    placeholder={isReadOnly ? '' : 'Escribe aquí...'}
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+
+            {/* Hitos importantes */}
+            <div className="p-3 flex flex-col gap-2">
+              <div className="flex items-center gap-1.5">
+                <Star size={11} className="text-amber-500" />
+                <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wide">Hitos importantes</label>
+              </div>
+
+              <div className="space-y-1 flex-1">
+                {allHitos.length === 0 && (
+                  <p className="text-[11px] text-text-muted italic">
+                    {weeklyPlan.pendientes.some(p => p.completed)
+                      ? 'Los pendientes completados aparecerán aquí'
+                      : 'Agrega hitos relevantes del turno'}
+                  </p>
+                )}
+                {allHitos.map(h => (
+                  <div key={h.id} className="flex items-start gap-1.5 group">
+                    <Star size={10} className={clsx('mt-0.5 flex-shrink-0', h.auto ? 'text-amber-400' : 'text-indigo-400')} />
+                    <span className="text-xs text-text-primary leading-tight flex-1">{h.title}</span>
+                    {h.auto && <span className="text-[9px] text-amber-400 flex-shrink-0 mt-0.5">auto</span>}
+                    {!h.auto && !isReadOnly && (
+                      <button onClick={() => removeHito(h.id)} className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-red-500 transition-opacity flex-shrink-0">
+                        <X size={10} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {!isReadOnly && (
+                <div className="flex gap-1 mt-1">
+                  <input
+                    value={newHito}
+                    onChange={e => setNewHito(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addHito()}
+                    placeholder="Agregar hito..."
+                    className="flex-1 text-xs border border-border rounded px-2 py-1 focus:outline-none focus:border-indigo-400"
                   />
+                  <button onClick={addHito} disabled={!newHito.trim()} className="p-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 transition-colors">
+                    <Plus size={12} />
+                  </button>
                 </div>
-              );
-            })}
+              )}
+            </div>
+
+            {/* Desviaciones del programa */}
+            <div className="p-3 flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wide">Desviaciones del programa</label>
+              <textarea
+                className="flex-1 text-xs text-text-primary resize-none focus:outline-none bg-transparent leading-relaxed min-h-[100px] placeholder:text-text-muted"
+                value={weeklyPlan.desviaciones ?? ''}
+                onChange={e => persist(prev => ({ ...prev, desviaciones: e.target.value }))}
+                readOnly={isReadOnly}
+                placeholder={isReadOnly ? '' : 'Actividades que no se ejecutaron según lo programado...'}
+              />
+            </div>
+
+            {/* Oportunidad de mejora */}
+            <div className="p-3 flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wide">Oportunidad de mejora</label>
+              <textarea
+                className="flex-1 text-xs text-text-primary resize-none focus:outline-none bg-transparent leading-relaxed min-h-[100px] placeholder:text-text-muted"
+                value={weeklyPlan.oportunidades ?? ''}
+                onChange={e => persist(prev => ({ ...prev, oportunidades: e.target.value }))}
+                readOnly={isReadOnly}
+                placeholder={isReadOnly ? '' : 'Procesos o acciones que se pueden mejorar...'}
+              />
+            </div>
+
           </div>
         </div>
 
-        {/* Overdue tasks (past days of this week — pending + completed late) */}
+        {/* Overdue tasks */}
         {totalOverdue > 0 && (() => {
-          const totalPending   = overdueTasks.reduce((s, g) => s + g.tasks.filter(t => !t.completedLate).length, 0);
-          const totalDoneLate  = overdueTasks.reduce((s, g) => s + g.tasks.filter(t => t.completedLate).length, 0);
+          const totalPending  = overdueTasks.reduce((s, g) => s + g.tasks.filter(t => !t.completedLate).length, 0);
+          const totalDoneLate = overdueTasks.reduce((s, g) => s + g.tasks.filter(t => t.completedLate).length, 0);
           return (
             <div className="border border-amber-300 rounded-xl bg-white overflow-hidden">
-              {/* Header with KPIs */}
               <div className="px-4 py-2.5 border-b border-amber-200 bg-amber-50 flex items-center gap-3 flex-wrap">
                 <Clock size={14} className="text-amber-600 flex-shrink-0" />
                 <span className="text-sm font-semibold text-amber-800">Tareas atrasadas esta semana</span>
@@ -247,22 +303,16 @@ export function WeeklyPage() {
               <div className="p-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {overdueTasks.map(group => (
                   <div key={group.date}>
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1.5">
-                      {group.label}
-                    </p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1.5">{group.label}</p>
                     <div className="space-y-1">
                       {group.tasks.map(t => (
                         <div key={t.id} className={clsx('flex items-start gap-1.5', t.completedLate && 'opacity-55')}>
                           {t.completedLate
                             ? <CheckCircle2 size={11} className="text-green-500 mt-0.5 flex-shrink-0" />
-                            : <AlertCircle  size={11} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                          }
+                            : <AlertCircle  size={11} className="text-amber-500 mt-0.5 flex-shrink-0" />}
                           <span className={clsx('text-xs leading-tight', t.completedLate ? 'line-through text-text-muted' : 'text-text-primary')}>
                             {t.title}
                           </span>
-                          {t.completedLate && (
-                            <span className="flex-shrink-0 text-[9px] text-green-600 font-medium">✓</span>
-                          )}
                         </div>
                       ))}
                     </div>

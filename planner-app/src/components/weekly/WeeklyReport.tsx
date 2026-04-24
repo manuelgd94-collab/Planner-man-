@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Download, ClipboardCopy, CheckCircle2, Circle, AlertTriangle, Zap, FileText, StickyNote } from 'lucide-react';
+import { Download, ClipboardCopy, CheckCircle2, Circle, AlertTriangle, Zap, FileText, StickyNote, Star } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Modal } from '../ui/Modal';
 import { usePlanner } from '../../store/PlannerContext';
@@ -74,10 +74,19 @@ export function WeeklyReport({ open, onClose }: WeeklyReportProps) {
   const totalRescheduled = dailyData.reduce((s, d) => s + d.rescheduled.length, 0);
   const overallPct = totalPlanned > 0 ? Math.round((totalDone / totalPlanned) * 100) : 0;
 
-  const pendientes = Array.isArray(weeklyPlan?.pendientes) ? weeklyPlan!.pendientes : [];
+  const pendientes  = Array.isArray(weeklyPlan?.pendientes)  ? weeklyPlan!.pendientes  : [];
   const emergencias = Array.isArray(weeklyPlan?.emergencias) ? weeklyPlan!.emergencias : [];
-  const goals = weeklyPlan?.goals ?? [];
-  const retro = weeklyPlan?.retrospectiva;
+  const goals       = weeklyPlan?.goals ?? [];
+  const hitos       = weeklyPlan?.hitos ?? [];
+  const desviaciones = weeklyPlan?.desviaciones ?? '';
+  const oportunidades = weeklyPlan?.oportunidades ?? '';
+
+  // Auto-hitos from completed pendientes not already in hitos
+  const autoHitoTitles = new Set(hitos.filter(h => h.auto).map(h => h.title));
+  const autoHitos = pendientes
+    .filter(p => p.completed && !autoHitoTitles.has(p.title))
+    .map(p => ({ id: `auto_${p.id}`, title: p.title, auto: true, createdAt: p.createdAt }));
+  const allHitos = [...autoHitos, ...hitos.filter(h => !h.auto)];
 
   /* ── Text report ─────────────────────────────────────────────────────── */
   function buildText(): string {
@@ -165,19 +174,29 @@ export function WeeklyReport({ open, onClose }: WeeklyReportProps) {
       }
     });
 
-    // ── 3. Emergencias ─────────────────────────────────────────────────
-    if (emergencias.length) {
-      lines.push('', SEP, '3. EMERGENCIAS / IMPREVISTOS SEMANALES', SEP, '');
-      emergencias.forEach(e => lines.push(`  ${e.completed ? '✓' : '!'} ${e.title}`));
+    // ── 3. Cierre de turno ─────────────────────────────────────────────
+    lines.push('', SEP, '3. CIERRE DE TURNO', SEP, '');
+
+    if (allHitos.length) {
+      lines.push('HITOS IMPORTANTES:');
+      allHitos.forEach(h => lines.push(`  ★ ${h.title}${h.auto ? '  [pendiente completado]' : ''}`));
+      lines.push('');
+    }
+    if (desviaciones.trim()) {
+      lines.push('DESVIACIONES DEL PROGRAMA:');
+      desviaciones.split('\n').forEach(l => lines.push(`  ${l}`));
+      lines.push('');
+    }
+    if (oportunidades.trim()) {
+      lines.push('OPORTUNIDADES DE MEJORA:');
+      oportunidades.split('\n').forEach(l => lines.push(`  ${l}`));
+      lines.push('');
     }
 
-    // ── 4. Retrospectiva ───────────────────────────────────────────────
-    const secNum = emergencias.length ? 4 : 3;
-    if (retro?.logros || retro?.mejoras || retro?.aprendizajes) {
-      lines.push('', SEP, `${secNum}. RETROSPECTIVA DEL TURNO`, SEP, '');
-      if (retro.logros)       { lines.push('¿Qué funcionó bien?', retro.logros, ''); }
-      if (retro.mejoras)      { lines.push('¿Qué mejorar?',       retro.mejoras, ''); }
-      if (retro.aprendizajes) { lines.push('¿Qué aprendí?',       retro.aprendizajes, ''); }
+    // ── 4. Emergencias ─────────────────────────────────────────────────
+    if (emergencias.length) {
+      lines.push('', SEP, '4. EMERGENCIAS / IMPREVISTOS SEMANALES', SEP, '');
+      emergencias.forEach(e => lines.push(`  ${e.completed ? '✓' : '!'} ${e.title}`));
     }
 
     lines.push('', SEP);
@@ -365,24 +384,38 @@ export function WeeklyReport({ open, onClose }: WeeklyReportProps) {
           </div>
         )}
 
-        {/* Retrospectiva */}
-        {retro && (retro.logros || retro.mejoras || retro.aprendizajes) && (
-          <div className="border border-teal-200 rounded-xl p-3 bg-teal-50/40">
-            <p className="text-[10px] font-bold text-teal-700 uppercase tracking-wide mb-2 flex items-center gap-1">
-              <FileText size={10} /> Retrospectiva
+        {/* Cierre de turno */}
+        {(allHitos.length > 0 || desviaciones || oportunidades) && (
+          <div className="border border-indigo-200 rounded-xl p-3 bg-indigo-50/30">
+            <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-3 flex items-center gap-1">
+              <FileText size={10} /> Cierre de turno
             </p>
-            <div className="grid grid-cols-3 gap-3">
-              {(['logros', 'mejoras', 'aprendizajes'] as const).map(k => {
-                const labels = { logros: '¿Qué funcionó?', mejoras: '¿Qué mejorar?', aprendizajes: '¿Qué aprendí?' };
-                const val = retro[k];
-                if (!val) return null;
-                return (
-                  <div key={k}>
-                    <p className="text-[10px] font-semibold text-teal-600 mb-0.5">{labels[k]}</p>
-                    <p className="text-[11px] text-text-secondary leading-snug whitespace-pre-line">{val}</p>
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-3 gap-4">
+              {allHitos.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-amber-600 mb-1.5 flex items-center gap-1"><Star size={9}/> Hitos importantes</p>
+                  <ul className="space-y-1">
+                    {allHitos.map(h => (
+                      <li key={h.id} className="flex items-start gap-1">
+                        <Star size={9} className={clsx('mt-0.5 flex-shrink-0', h.auto ? 'text-amber-400' : 'text-indigo-400')} />
+                        <span className="text-[11px] text-text-secondary leading-snug">{h.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {desviaciones && (
+                <div>
+                  <p className="text-[10px] font-semibold text-red-600 mb-1.5">Desviaciones del programa</p>
+                  <p className="text-[11px] text-text-secondary leading-snug whitespace-pre-line">{desviaciones}</p>
+                </div>
+              )}
+              {oportunidades && (
+                <div>
+                  <p className="text-[10px] font-semibold text-green-700 mb-1.5">Oportunidad de mejora</p>
+                  <p className="text-[11px] text-text-secondary leading-snug whitespace-pre-line">{oportunidades}</p>
+                </div>
+              )}
             </div>
           </div>
         )}
