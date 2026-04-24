@@ -50,8 +50,24 @@ export function onAuthChange(cb: (user: User | null) => void): () => void {
 export async function signIn(email: string, password: string): Promise<UserProfile> {
   if (!configured) throw new Error('Firebase no configurado');
   const cred = await signInWithEmailAndPassword(getAuth(getApp()), email.trim(), password);
-  const profile = await getProfile(cred.user.uid);
-  if (!profile) throw new Error('Perfil de usuario no encontrado');
+  let profile = await getProfile(cred.user.uid);
+
+  // If Auth account exists but profile was never written (failed registration),
+  // create the profile now so the user can log in
+  if (!profile) {
+    const db = getFirestore(getApp());
+    const existing = await getDocs(query(collection(db, 'user_profiles'), limit(2)));
+    const role: 'admin' | 'user' = existing.empty ? 'admin' : 'user';
+    profile = {
+      uid: cred.user.uid,
+      name: email.trim().split('@')[0],
+      email: email.trim().toLowerCase(),
+      role,
+      createdAt: new Date().toISOString(),
+    };
+    await setDoc(doc(db, 'user_profiles', cred.user.uid), profile);
+  }
+
   return profile;
 }
 
