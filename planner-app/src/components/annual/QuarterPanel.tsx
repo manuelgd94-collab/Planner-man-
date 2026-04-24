@@ -25,6 +25,12 @@ export function QuarterPanel({ quarter, year }: QuarterPanelProps) {
     setReview(getItem<string>(reviewKey) ?? '');
   }, [reviewKey]);
 
+  // Save on unmount (navigation without blur) and when review changes
+  useEffect(() => {
+    return () => { setItem(reviewKey, review); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [review, reviewKey]);
+
   const goals = (state.annualPlan?.goals ?? []).filter(g => g.quarter === quarter);
   const completed = goals.filter(g => g.status === 'completada').length;
 

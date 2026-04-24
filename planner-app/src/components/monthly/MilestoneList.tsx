@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Plus, X, Calendar, Truck, Users, CheckCircle2, Star } from 'lucide-react';
 import { clsx } from 'clsx';
-import { getItem, setItem, KEYS } from '../../store/localStorage';
-import type { Milestone, MilestoneType, MonthlyPlan } from '../../types';
+import { usePlanner } from '../../store/PlannerContext';
+import type { Milestone, MilestoneType } from '../../types';
 import { formatDate, capitalizeFirst } from '../../utils/dateUtils';
 
 const TYPE_CONFIG: Record<MilestoneType, { label: string; icon: React.ReactNode; color: string }> = {
@@ -19,32 +19,27 @@ interface MilestoneListProps {
 }
 
 export function MilestoneList({ yearMonth, readOnly }: MilestoneListProps) {
+  const { state, dispatch } = usePlanner();
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ title: '', date: '', type: 'entrega' as MilestoneType });
 
-  function getMilestones(): Milestone[] {
-    const plan = getItem<MonthlyPlan>(KEYS.monthly(yearMonth));
-    return plan?.milestones ?? [];
-  }
+  const monthlyPlan = state.monthlyPlan ?? { yearMonth, goals: [] };
+  const milestones = (monthlyPlan.milestones ?? []).slice().sort((a, b) => a.date.localeCompare(b.date));
 
-  function saveMilestones(milestones: Milestone[]) {
-    const existing = getItem<MonthlyPlan>(KEYS.monthly(yearMonth));
-    const plan: MonthlyPlan = existing ?? { yearMonth, goals: [] };
-    setItem(KEYS.monthly(yearMonth), { ...plan, milestones });
+  function saveMilestones(updated: Milestone[]) {
+    dispatch({ type: 'LOAD_MONTHLY', plan: { ...monthlyPlan, milestones: updated } });
   }
-
-  const milestones = getMilestones().sort((a, b) => a.date.localeCompare(b.date));
 
   function addMilestone() {
     if (!draft.title.trim() || !draft.date) return;
     const next: Milestone = { id: crypto.randomUUID(), ...draft, title: draft.title.trim() };
-    saveMilestones([...getMilestones(), next]);
+    saveMilestones([...(monthlyPlan.milestones ?? []), next]);
     setDraft({ title: '', date: '', type: 'entrega' });
     setAdding(false);
   }
 
   function deleteMilestone(id: string) {
-    saveMilestones(getMilestones().filter(m => m.id !== id));
+    saveMilestones((monthlyPlan.milestones ?? []).filter(m => m.id !== id));
   }
 
   return (

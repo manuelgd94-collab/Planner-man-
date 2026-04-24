@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { CheckCircle2, Clock, Zap, SmilePlus } from 'lucide-react';
 import { CalendarGrid } from '../components/monthly/CalendarGrid';
@@ -6,8 +6,8 @@ import { MonthlyGoals } from '../components/monthly/MonthlyGoals';
 import { MilestoneList } from '../components/monthly/MilestoneList';
 import { usePlanner } from '../store/PlannerContext';
 import { formatDate, capitalizeFirst, toYearMonth, toISODate } from '../utils/dateUtils';
-import { getItem, setItem, KEYS } from '../store/localStorage';
-import type { DailyPlan, MonthlyPlan } from '../types';
+import { getItem, KEYS } from '../store/localStorage';
+import type { DailyPlan } from '../types';
 
 const MOOD_EMOJI: Record<number, string> = { 1: '😞', 2: '😕', 3: '😐', 4: '🙂', 5: '😄' };
 const MOOD_LABEL: Record<number, string> = { 1: 'Mal', 2: 'Regular', 3: 'Normal', 4: 'Bien', 5: 'Excelente' };
@@ -178,11 +178,19 @@ function DailyDayPreview() {
 }
 
 function MonthlyObservaciones({ yearMonth, readOnly }: { yearMonth: string; readOnly: boolean }) {
-  const text = (getItem<MonthlyPlan>(KEYS.monthly(yearMonth)) as any)?.observaciones ?? '';
+  const { state, dispatch } = usePlanner();
+  const [text, setText] = useState(state.monthlyPlan?.observaciones ?? '');
 
+  // Sync text when the month changes
+  useEffect(() => {
+    setText(state.monthlyPlan?.observaciones ?? '');
+  }, [yearMonth, state.monthlyPlan?.observaciones]);
+
+  // Persist through context so PlannerContext's useEffect saves it together with the rest of monthlyPlan
   function handleChange(value: string) {
-    const plan = getItem<MonthlyPlan>(KEYS.monthly(yearMonth));
-    setItem(KEYS.monthly(yearMonth), { yearMonth, goals: [], ...plan, observaciones: value });
+    setText(value);
+    const base = state.monthlyPlan ?? { yearMonth, goals: [] };
+    dispatch({ type: 'LOAD_MONTHLY', plan: { ...base, observaciones: value } });
   }
 
   return (
@@ -190,7 +198,7 @@ function MonthlyObservaciones({ yearMonth, readOnly }: { yearMonth: string; read
       <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Observaciones del mes</p>
       <textarea
         className="w-full text-xs text-text-primary resize-none focus:outline-none bg-transparent leading-relaxed min-h-[80px] placeholder:text-text-muted"
-        defaultValue={text}
+        value={text}
         readOnly={readOnly}
         placeholder={readOnly ? '' : 'Notas, logros o pendientes del mes…'}
         onChange={e => handleChange(e.target.value)}

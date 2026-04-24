@@ -1,17 +1,12 @@
 import type { RecurringTemplate, Task } from '../types';
-
-const KEY = 'planner:v1:recurring-templates';
+import { getItem, setItem, KEYS } from './localStorage';
 
 export function getTemplates(): RecurringTemplate[] {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) ?? '[]');
-  } catch {
-    return [];
-  }
+  return getItem<RecurringTemplate[]>(KEYS.recurringTemplates) ?? [];
 }
 
 export function saveTemplates(templates: RecurringTemplate[]): void {
-  localStorage.setItem(KEY, JSON.stringify(templates));
+  setItem(KEYS.recurringTemplates, templates);
 }
 
 /** Returns true if this template should generate a task for the given date */
