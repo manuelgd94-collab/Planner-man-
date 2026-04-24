@@ -67,3 +67,10 @@ export function getWeekDays(date: Date): Date[] {
 export function capitalizeFirst(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+export function getShiftWeekNumber(thursday: Date): number {
+  const year = thursday.getFullYear();
+  const jan1 = new Date(year, 0, 1);
+  const dayOfYear = Math.round((thursday.getTime() - jan1.getTime()) / 86400000) + 1;
+  return Math.ceil(dayOfYear / 7);
+}
